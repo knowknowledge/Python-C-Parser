@@ -1,23 +1,35 @@
 import string
 
-keywords = [
-    "short", "int", "long", "float", "double", "char", "void", "enum",
-    "struct", "union", "typedef",
-    "if", "else", "goto",
-    "for", "do", "while", 
-    "continue", "break", 
-    "return", 
-    "switch", "case", "default", 
-    "const", "volatile", "extern", "static", "register",
-    "signed", "unsigned",
-    "sizeof",
-]
+# C Keywords
+types = ["short", "int", "long", "float", "double", "char", "void"]
+containers = ["enum", "struct", "union", "typedef"]
+modifiers = [ "const", "volatile", "extern", "static", "register", "signed", "unsigned"]
+flow = [ "if", "else",
+         "goto", 
+         "case", "default", 
+         "continue", "break", ]
+loops = ["for", "do", "while" "switch", ]
+keywords = types + containers + modifiers + flow + loops + [ "return", "sizeof" ]
 
+unary_operations = ["-","+"]
+binary_operations = ["+","-","/","*",
+                     "^","&","|"]
+
+def is_keyword(token):
+    return token in keywords
+
+# Break the text into tokens
 def tokenize( s ):
     curtoken = ""
     symbols = string.punctuation.replace("_","")
     for c in s:
         if c in symbols:
+            #TODO: Should be handled more gracefully
+            #TODO: Add double-character symbols
+            #       +=, -=, /=, *=, &=, ^=, |=, %=
+            #       >>, <<, &&, ||, 
+            #TODO: Add triple-character symbols
+            #       >>=, <<=
             if not curtoken == "":
                 yield curtoken
             yield c
@@ -25,19 +37,96 @@ def tokenize( s ):
         elif c in string.whitespace:
             if not curtoken == "":
                 yield curtoken
-            if c == "\n":
-                yield c
+            #if c == "\n":
+            #    yield c
             curtoken = ""
         elif c in string.digits:
-            if not curtoken == "":
-                yield curtoken
-                curtoken = ""
+            print "Digit", c
             curtoken += c
         elif curtoken.startswith("0x") and c in string.hexdigits:
-                curtoken += c
+            print "Hexit", c
+            curtoken += c
         else:
             curtoken += c
-    yield curtoken
+    if curtoken not in string.whitespace:
+        yield curtoken
+
+# Parse a Value
+def parse_value(tokens):
+    if tokens[0] in unary_operations:
+        unary = tokens.pop(0)
+        name = tokens.pop(0)
+        print "Value",unary,name
+        return ('Value',unary,name),tokens
+    elif is_keyword(tokens[0]):
+        print "Parse Error - Value Expected at %s, found keyword" % tokens[0]
+    elif tokens[0] in string.punctuation:
+        print "Parse Error - Value Expected at %s, found punctuation" % tokens[0]
+    else:
+        name = tokens.pop(0)
+        print "Value",name
+        return ('Value',name),tokens
+
+def parse_expression( tokens ):
+    expression = []
+    print "In Expression at ", tokens[0]
+    while len(tokens):
+        #TODO: Add Ternary Operators
+        #TODO: Add Comma
+        if tokens[0] == "(":
+            tokens.pop(0)
+            inner,tokens = parse_expression( tokens )
+            expression.append( inner )
+            if tokens[0] != ")":
+                print "Parse Error - ')' expected after expression %s" % inner
+            tokens.pop(0)
+            break
+        elif tokens[0] == ";":
+            break
+        elif tokens[0] == ")":
+            break
+        else:
+            value,tokens = parse_value( tokens )
+            expression.append( value )
+            # TODO: Add Right/Left Associations
+            if tokens[0] in binary_operations:
+                expression.append( tokens.pop(0) )
+    print "Expression", expression
+    return ("Expression", expression),tokens    
+
+def parse_statement( tokens ):
+    statement = []
+    if tokens[0] in types:
+        type = tokens.pop(0)
+        print "Type %s" % type
+        statement = ["Assignment", type]
+        while len(tokens):
+            name = tokens.pop(0)
+            print "Name %s" % name
+            if not is_keyword(name):
+                if tokens[0]=="=":
+                    # Assignment value
+                    tokens.pop(0)
+                    expression,tokens = parse_expression( tokens )
+                    statement.append((name,"=",expression))
+                else:
+                    # Non-Assignmed value
+                    statement.append(name)
+            if tokens[0]==",":
+                tokens.pop(0)
+                continue
+            elif tokens[0]==";":
+                break
+            if len(tokens):
+                print "Parse Error - unknown token encountered at '%s'" % tokens[0]
+    else:
+        statement,tokens = parse_expression(tokens)
+    if tokens[0]==";":
+        tokens.pop(0)
+    else:
+        print "Parse Error - Statements must end in a semicolon:"
+    print "Statement",statement,"\n"
+    return statement, tokens
 
 if __name__ == "__main__":
     import sys
@@ -49,6 +138,10 @@ if __name__ == "__main__":
     for filename in files: 
         print
         data = open(filename,"r").read()
-        for token in tokenize( data ):
-            print token
+        for i,token in enumerate(tokenize( data )):
+            print "%d:%s" % (i,token)
+        tokens = list(tokenize( data ))
+        print tokens
+        while len(tokens):
+            statement, tokens = parse_statement( tokens )
 
