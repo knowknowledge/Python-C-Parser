@@ -41,10 +41,8 @@ def tokenize( s ):
             #    yield c
             curtoken = ""
         elif c in string.digits:
-            print "Digit", c
             curtoken += c
         elif curtoken.startswith("0x") and c in string.hexdigits:
-            print "Hexit", c
             curtoken += c
         else:
             curtoken += c
@@ -56,32 +54,38 @@ def parse_value(tokens):
     if tokens[0] in unary_operations:
         unary = tokens.pop(0)
         name = tokens.pop(0)
-        print "Value",unary,name
+        #print "Value",unary,name
         return ('Value',unary,name),tokens
     elif is_keyword(tokens[0]):
         print "Parse Error - Value Expected at %s, found keyword" % tokens[0]
+        assert(0)
     elif tokens[0] in string.punctuation:
         print "Parse Error - Value Expected at %s, found punctuation" % tokens[0]
+        assert(0)
     else:
         name = tokens.pop(0)
-        print "Value",name
+        #print "Value",name
         return ('Value',name),tokens
 
 def parse_expression( tokens ):
+    # This should be a tree not a list
     expression = []
-    print "In Expression at ", tokens[0]
     while len(tokens):
         #TODO: Add Ternary Operators
         #TODO: Add Comma
+        #TODO: Symbol Symbol should be illegal
         if tokens[0] == "(":
             tokens.pop(0)
             inner,tokens = parse_expression( tokens )
             expression.append( inner )
             if tokens[0] != ")":
                 print "Parse Error - ')' expected after expression %s" % inner
+                assert(0)
             tokens.pop(0)
             break
         elif tokens[0] == ";":
+            break
+        elif tokens[0] == ",":
             break
         elif tokens[0] == ")":
             break
@@ -90,16 +94,16 @@ def parse_expression( tokens ):
             expression.append( value )
             # TODO: Add Right/Left Associations
             if tokens[0] in binary_operations:
-                expression.append( tokens.pop(0) )
-    print "Expression", expression
-    return ("Expression", expression),tokens    
+                expression.append( ("Math", tokens.pop(0)) )
+    #print "Expression", tuple(expression)
+    return ("Expression", tuple(expression)),tokens    
 
 def parse_statement( tokens ):
     statement = []
     if tokens[0] in types:
+        assignments = []
         type = tokens.pop(0)
         print "Type %s" % type
-        statement = ["Assignment", type]
         while len(tokens):
             name = tokens.pop(0)
             print "Name %s" % name
@@ -108,10 +112,10 @@ def parse_statement( tokens ):
                     # Assignment value
                     tokens.pop(0)
                     expression,tokens = parse_expression( tokens )
-                    statement.append((name,"=",expression))
+                    assignments.append((type,name,expression))
                 else:
                     # Non-Assignmed value
-                    statement.append(name)
+                    assignments.append((type,name))
             if tokens[0]==",":
                 tokens.pop(0)
                 continue
@@ -119,14 +123,76 @@ def parse_statement( tokens ):
                 break
             if len(tokens):
                 print "Parse Error - unknown token encountered at '%s'" % tokens[0]
+                assert(0)
+        statement = ("Assignment", assignments)
     else:
         statement,tokens = parse_expression(tokens)
     if tokens[0]==";":
         tokens.pop(0)
     else:
         print "Parse Error - Statements must end in a semicolon:"
-    print "Statement",statement,"\n"
+        assert(0)
+    #print "Statement",statement,"\n"
     return statement, tokens
+
+def parse_block( tokens ):
+    if tokens[0]!="{":
+        print "Parse Error - Blocks must start with a {, found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    block = []
+    while len(tokens) and tokens[0] != "}":
+        if tokens[0] == "{":
+            inner,tokens = parse_block(tokens)
+            block.append( inner )
+        else:
+            statement,tokens = parse_statement(tokens)
+            block.append( statement )
+    if tokens[0]!="}":
+        print "Parse Error - Blocks must end with a }, found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    #print "Block", block
+    return ("Block",block), tokens
+
+def print_thing( thing, depth=0 ):
+    name,value = thing
+    if name == "Block":
+        print "\t"*depth+ "Block"
+        print "\t"*depth+ "{"
+        for statement in value:
+            print_thing(statement,depth+1)
+        print "\t"*depth+ "}"
+    elif name == "Statement":
+        print "\t"*depth+ "Statement"
+        pass
+    elif name == "Math":
+        print "\t"*depth+ value
+    elif name == "Value":
+        print "\t"*depth+ value
+    elif name == "Assignment":
+        print "\t"*depth+ "Assignment"
+        for assignment in value:
+            if len(assignment) == 2:
+                type,name = assignment
+                print "\t"*depth+ type,name 
+            else:
+                type,name,expression = assignment
+                print "\t"*depth+ type,name, "= ("
+                print_thing(expression,depth+1)
+                print "\t"*depth+ ")"
+        pass
+    elif name == "Expression":
+        print "\t"*depth+ "Expression"
+        print "\t"*depth+ "("
+        for expression in value:
+            
+            print_thing(expression,depth+1)
+        print "\t"*depth+ ")"
+    else:
+        print "\t"*depth+ name
+        print "\t"*depth+ value
+        
 
 if __name__ == "__main__":
     import sys
@@ -135,7 +201,7 @@ if __name__ == "__main__":
     for arg in sys.argv[1:]:
         for filenames in glob.glob( arg ):
                 files.append( filenames )
-    for filename in files: 
+    for filename in files:
         print
         data = open(filename,"r").read()
         for i,token in enumerate(tokenize( data )):
@@ -143,5 +209,6 @@ if __name__ == "__main__":
         tokens = list(tokenize( data ))
         print tokens
         while len(tokens):
-            statement, tokens = parse_statement( tokens )
-
+            block, tokens = parse_block( tokens )
+            print_thing(block)
+            
