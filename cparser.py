@@ -11,41 +11,51 @@ flow = [ "if", "else",
 loops = ["for", "do", "while" "switch", ]
 keywords = types + containers + modifiers + flow + loops + [ "return", "sizeof" ]
 
-unary_operations = ["-","+"]
+unary_operations = ["-","+","*","&"]
 binary_operations = ["+","-","/","*",
-                     "^","&","|"]
-
+                     "^","&","|",
+                     "<<",">>",
+                     "&&","||","==",
+                     "=",
+                     "+=","-=","/=","*=",
+                     "^=","&=","|=",
+                     "<<=",">>=",]
 def is_keyword(token):
     return token in keywords
+
+def isonly(s,chars):
+    return all(map(lambda c: c in chars, s))
 
 # Break the text into tokens
 def tokenize( s ):
     curtoken = ""
     symbols = string.punctuation.replace("_","")
     for c in s:
+        #print (c,curtoken)
         if c in symbols:
-            #TODO: Should be handled more gracefully
-            #TODO: Add double-character symbols
-            #       +=, -=, /=, *=, &=, ^=, |=, %=
-            #       >>, <<, &&, ||, 
-            #TODO: Add triple-character symbols
-            #       >>=, <<=
-            if not curtoken == "":
-                yield curtoken
-            yield c
-            curtoken = ""
-        elif c in string.whitespace:
-            if not curtoken == "":
-                yield curtoken
-            #if c == "\n":
-            #    yield c
-            curtoken = ""
-        elif c in string.digits:
-            curtoken += c
-        elif curtoken.startswith("0x") and c in string.hexdigits:
-            curtoken += c
+            if (curtoken+c) in binary_operations:
+                curtoken = (curtoken+c)
+            else:
+                if curtoken != "":
+                    yield curtoken
+                curtoken = c
         else:
-            curtoken += c
+        # Non-Symbols
+            if (curtoken) in binary_operations:
+                yield curtoken
+                curtoken = ""
+            if c in string.whitespace:
+                if curtoken != "":
+                    yield curtoken
+                #if c == "\n":
+                #    yield c
+                curtoken = ""
+            elif c in string.digits:
+                curtoken += c
+            elif curtoken.startswith("0x") and c in string.hexdigits and isonly(curtoken[2:],string.digits):
+                curtoken += c
+            else:
+                curtoken += c
     if curtoken not in string.whitespace:
         yield curtoken
 
@@ -71,7 +81,8 @@ def parse_expression( tokens ):
     # This should be a tree not a list
     expression = []
     while len(tokens):
-        #TODO: Add Ternary Operators
+        #TODO: Add Unary Operators
+        #TODO: Add Ternary Operator "?:"
         #TODO: Add Comma
         #TODO: Symbol Symbol should be illegal
         if tokens[0] == "(":
@@ -94,7 +105,9 @@ def parse_expression( tokens ):
             expression.append( value )
             # TODO: Add Right/Left Associations
             if tokens[0] in binary_operations:
-                expression.append( ("Math", tokens.pop(0)) )
+                symbol = tokens.pop(0)
+                right,tokens = parse_expression( tokens )
+                expression.append( ("Math", (symbol, right) ) )
     #print "Expression", tuple(expression)
     return ("Expression", tuple(expression)),tokens
 
@@ -206,7 +219,9 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "Statement"
         pass
     elif name == "Math":
-        print "\t"*depth+ value
+        symbol, expression = value
+        print "\t"*depth+symbol
+        print_thing(expression,depth+1)
     elif name == "Value":
         print "\t"*depth+ value
     elif name == "Assignment":
@@ -220,7 +235,6 @@ def print_thing( thing, depth=0 ):
                 print "\t"*depth+ type,name, "= ("
                 print_thing(expression,depth+1)
                 print "\t"*depth+ ")"
-        pass
     elif name == "Expression":
         print "\t"*depth+ name
         print "\t"*depth+ "("
