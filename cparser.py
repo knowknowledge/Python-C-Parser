@@ -1,5 +1,6 @@
 import string
 
+
 # C Keywords
 types = ["short", "int", "long", "float", "double", "char", "void"]
 containers = ["enum", "struct", "union", "typedef"]
@@ -15,7 +16,8 @@ unary_operations = ["-","+","*","&"]
 binary_operations = ["+","-","/","*",
                      "^","&","|",
                      "<<",">>",
-                     "&&","||","==",
+                     "<",">", "<=",">=",
+                     "&&","||","==","!=",
                      "=",
                      "+=","-=","/=","*=",
                      "^=","&=","|=",
@@ -24,10 +26,11 @@ def is_keyword(token):
     return token in keywords
 
 def isonly(s,chars):
-    return all(map(lambda c: c in chars, s))
+    return len(s) and all(map(lambda c: c in chars, s))
 
 # Break the text into tokens
 def tokenize( s ):
+    # TODO: Need to seperate some tokens better, example if(foo); 
     curtoken = ""
     symbols = string.punctuation.replace("_","")
     line = 1
@@ -44,7 +47,7 @@ def tokenize( s ):
                 curtoken = c
         else:
         # Non-Symbols
-            if (curtoken) in binary_operations:
+            if isonly(curtoken, symbols):
                 yield curtoken
                 curtoken = ""
             if c in string.whitespace:
@@ -98,27 +101,77 @@ def parse_if( tokens ):
     test,tokens = parse_expression( tokens )
 
     if tokens[0]!=")":
-        print "Parse Error - if must have '(', found %s instead" % tokens[0]
+        print "Parse Error - if must have ')', found %s instead" % tokens[0]
         assert(0)
     tokens.pop(0)
 
-    if tokens[0]=="{":
-        action,tokens = parse_block( tokens )
-        print "Action(Block)", action
-    else:
-        action,tokens = parse_statement( tokens )
-        print "Action(Statement)", action
+    action,tokens = parse_statement_or_block(tokens)
 
     alternative = None
     if tokens[0]=="else":
         tokens.pop(0)
-        if tokens[0]=="{":
-            alternative,tokens = parse_block( tokens )
-        else:
-            alternative,tokens = parse_statement( tokens )
+        alternative,tokens = parse_statement_or_block(tokens)
 
-    print "If",test,action
+    #print "If",test,action
     return ("If",(test,action,alternative)), tokens
+
+def parse_while( tokens ):
+    if tokens[0] not in ["while"]:
+        print "Parse Error - while must start with 'while', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    
+    if tokens[0]!="(":
+        print "Parse Error - while must have '(', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    test,tokens = parse_expression( tokens )
+
+    if tokens[0]!=")":
+        print "Parse Error - if must have ')', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    action,tokens = parse_statement_or_block(tokens)
+
+    #print "While",test,action
+    return ("While",(test,action)), tokens
+
+def parse_for( tokens ):
+    if tokens[0] not in ["for"]:
+        print "Parse Error - for must start with 'for', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    
+    if tokens[0]!="(":
+        print "Parse Error - for must have '(', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    init,tokens = parse_expression( tokens )
+
+    if tokens[0]!=";":
+        print "Parse Error - for must have first ';', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    test,tokens = parse_expression( tokens )
+
+    if tokens[0]!=";":
+        print "Parse Error - for must have second ';', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    step,tokens = parse_expression( tokens )
+
+    if tokens[0]!=")":
+        print "Parse Error - if must have ')', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    action,tokens = parse_statement_or_block(tokens)
+
+    #print "For",init,test,step,action
+    return ("For",(init,test,step,action)), tokens
 
 def parse_expression( tokens ):
     # This should be a tree not a list
@@ -222,6 +275,12 @@ def parse_statement( tokens ):
     if tokens[0] == "if":
         statement,tokens = parse_if( tokens )
         needsemicolon = False
+    elif tokens[0] == "while":
+        statement,tokens = parse_while( tokens )
+        needsemicolon = False
+    elif tokens[0] == "for":
+        statement,tokens = parse_for( tokens )
+        needsemicolon = False
     elif tokens[0] in types:
         statement,tokens = parse_assignment( tokens )
     elif tokens[0]=="struct" or tokens[0]=="union":
@@ -244,18 +303,20 @@ def parse_block( tokens ):
     tokens.pop(0)
     block = []
     while len(tokens) and tokens[0] != "}":
-        if tokens[0] == "{":
-            inner,tokens = parse_block(tokens)
-            block.append( inner )
-        else:
-            statement,tokens = parse_statement(tokens)
-            block.append( statement )
+        statement,tokens = parse_statement_or_block(tokens)
+        block.append( statement )
     if tokens[0]!="}":
         print "Parse Error - Blocks must end with a }, found %s instead" % tokens[0]
         assert(0)
     tokens.pop(0)
     #print "Block", block
     return ("Block",block), tokens
+
+def parse_statement_or_block( tokens ):
+    if tokens[0]=="{":
+        return parse_block( tokens )
+    else:
+        return parse_statement( tokens )
 
 def print_thing( thing, depth=0 ):
     name,value = thing
@@ -300,7 +361,6 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "}"
     elif name=="If":
         test,action,alternative = value
-     
         print "\t"*depth+ name
         print "\t"*depth+ "("
         print_thing(test,depth+1)
@@ -313,10 +373,32 @@ def print_thing( thing, depth=0 ):
             print "\t"*depth+ "{"
             print_thing(alternative,depth+1)
             print "\t"*depth+ "}"
+    elif name=="While":
+        test,action = value
+        print "\t"*depth+ name
+        print "\t"*depth+ "("
+        print_thing(test,depth+1)
+        print "\t"*depth+ ")"
+        print "\t"*depth+ "{"
+        print_thing(action,depth+1)
+        print "\t"*depth+ "}"
+    elif name=="For":
+        init,test,step,action = value
+        print "\t"*depth+ name
+        print "\t"*depth+ "("
+        print "\t"*depth+ "INIT"
+        print_thing(init,depth+1)
+        print "\t"*depth+ "TEST"
+        print_thing(test,depth+1)
+        print "\t"*depth+ "STEP"
+        print_thing(step,depth+1)
+        print "\t"*depth+ ")"
+        print "\t"*depth+ "{"
+        print_thing(action,depth+1)
+        print "\t"*depth+ "}"
     else:
         print "\t"*depth+ name
         print "\t"*depth+ value
-        
 
 if __name__ == "__main__":
     import sys
@@ -333,6 +415,6 @@ if __name__ == "__main__":
         tokens = list(tokenize( data ))
         print tokens
         while len(tokens):
-            block, tokens = parse_block( tokens )
+            block, tokens = parse_statement_or_block( tokens )
             print_thing(block)
             
