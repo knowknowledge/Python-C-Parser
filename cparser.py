@@ -96,7 +96,43 @@ def parse_expression( tokens ):
             if tokens[0] in binary_operations:
                 expression.append( ("Math", tokens.pop(0)) )
     #print "Expression", tuple(expression)
-    return ("Expression", tuple(expression)),tokens    
+    return ("Expression", tuple(expression)),tokens
+
+def parse_struct( tokens ):
+    struct = []
+    if tokens[0] not in ["struct","union"]:
+        print "Parse Error - struct must start with 'struct' or 'union', found %s instead" % tokens[0]
+        assert(0)
+    kind = "Struct" if (tokens.pop(0) == "struct") else "Union"
+    if tokens[0]!="{":
+        print "Parse Error - Blocks must start with 'struct {', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    while len(tokens):
+        if tokens[0]=="}":
+            break
+        if tokens[0]=="struct" or tokens[0]=="union":
+            inner,tokens = parse_struct(tokens)
+            struct.append(inner)
+            if tokens[0]!=";":
+                print "Parse Error - struct values must end in ';', found %s instead" % tokens[0]
+                assert(0)
+            tokens.pop(0)
+        else:
+            type = tokens.pop(0)
+            name = tokens.pop(0)
+            if tokens[0]!=";":
+                print "Parse Error - struct values must end in ';', found %s instead" % tokens[0]
+                assert(0)
+            tokens.pop(0)
+            struct.append(("Assignment", [(type,name)]))
+    if tokens[0]!="}":
+        print "Parse Error - Blocks must start with 'struct {', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    
+    print kind, struct
+    return (kind, struct), tokens
 
 def parse_statement( tokens ):
     statement = []
@@ -125,12 +161,14 @@ def parse_statement( tokens ):
                 print "Parse Error - unknown token encountered at '%s'" % tokens[0]
                 assert(0)
         statement = ("Assignment", assignments)
+    elif tokens[0]=="struct" or tokens[0]=="union":
+        statement,tokens = parse_struct(tokens)
     else:
         statement,tokens = parse_expression(tokens)
     if tokens[0]==";":
         tokens.pop(0)
     else:
-        print "Parse Error - Statements must end in a semicolon:"
+        print "Parse Error - Statements must end in a semicolon: found %s instead" % tokens[0]
         assert(0)
     #print "Statement",statement,"\n"
     return statement, tokens
@@ -157,6 +195,7 @@ def parse_block( tokens ):
 
 def print_thing( thing, depth=0 ):
     name,value = thing
+    #print "\t"*depth+ "THING:", name,value
     if name == "Block":
         print "\t"*depth+ "Block"
         print "\t"*depth+ "{"
@@ -171,7 +210,7 @@ def print_thing( thing, depth=0 ):
     elif name == "Value":
         print "\t"*depth+ value
     elif name == "Assignment":
-        print "\t"*depth+ "Assignment"
+        print "\t"*depth+ name
         for assignment in value:
             if len(assignment) == 2:
                 type,name = assignment
@@ -183,12 +222,17 @@ def print_thing( thing, depth=0 ):
                 print "\t"*depth+ ")"
         pass
     elif name == "Expression":
-        print "\t"*depth+ "Expression"
+        print "\t"*depth+ name
         print "\t"*depth+ "("
         for expression in value:
-            
             print_thing(expression,depth+1)
         print "\t"*depth+ ")"
+    elif name=="Struct" or name=="Union":
+        print "\t"*depth+ name
+        print "\t"*depth+ "{"
+        for expression in value:
+            print_thing(expression,depth+1)
+        print "\t"*depth+ "}"
     else:
         print "\t"*depth+ name
         print "\t"*depth+ value
