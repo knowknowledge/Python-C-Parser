@@ -30,7 +30,10 @@ def isonly(s,chars):
 def tokenize( s ):
     curtoken = ""
     symbols = string.punctuation.replace("_","")
+    line = 1
+    pos = 0
     for c in s:
+        pos += 1
         #print (c,curtoken)
         if c in symbols:
             if (curtoken+c) in binary_operations:
@@ -47,12 +50,16 @@ def tokenize( s ):
             if c in string.whitespace:
                 if curtoken != "":
                     yield curtoken
-                #if c == "\n":
-                #    yield c
+                if c == "\n":
+                    #yield c
+                    line += 1
+                    pos = 0
                 curtoken = ""
             elif c in string.digits:
                 curtoken += c
             elif curtoken.startswith("0x") and c in string.hexdigits and isonly(curtoken[2:],string.digits):
+                curtoken += c
+            elif curtoken == "0" and c in "xX":
                 curtoken += c
             else:
                 curtoken += c
@@ -76,6 +83,42 @@ def parse_value(tokens):
         name = tokens.pop(0)
         #print "Value",name
         return ('Value',name),tokens
+
+def parse_if( tokens ):
+    if tokens[0] not in ["if"]:
+        print "Parse Error - if must start with 'if', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+    
+    if tokens[0]!="(":
+        print "Parse Error - if must have '(', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    test,tokens = parse_expression( tokens )
+
+    if tokens[0]!=")":
+        print "Parse Error - if must have '(', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    if tokens[0]=="{":
+        action,tokens = parse_block( tokens )
+        print "Action(Block)", action
+    else:
+        action,tokens = parse_statement( tokens )
+        print "Action(Statement)", action
+
+    alternative = None
+    if tokens[0]=="else":
+        tokens.pop(0)
+        if tokens[0]=="{":
+            alternative,tokens = parse_block( tokens )
+        else:
+            alternative,tokens = parse_statement( tokens )
+
+    print "If",test,action
+    return ("If",(test,action,alternative)), tokens
 
 def parse_expression( tokens ):
     # This should be a tree not a list
@@ -147,42 +190,50 @@ def parse_struct( tokens ):
     print kind, struct
     return (kind, struct), tokens
 
+def parse_assignment( tokens ):
+    assignments = []
+    type = tokens.pop(0)
+    print "Type %s" % type
+    while len(tokens):
+        name = tokens.pop(0)
+        print "Name %s" % name
+        if not is_keyword(name):
+            if tokens[0]=="=":
+                # Assignment value
+                tokens.pop(0)
+                expression,tokens = parse_expression( tokens )
+                assignments.append((type,name,expression))
+            else:
+                # Non-Assignmed value
+                assignments.append((type,name))
+        if tokens[0]==",":
+            tokens.pop(0)
+            continue
+        elif tokens[0]==";":
+            break
+        if len(tokens):
+            print "Parse Error - unknown token encountered at '%s'" % tokens[0]
+            assert(0)
+    return ("Assignment", assignments), tokens
+
 def parse_statement( tokens ):
     statement = []
-    if tokens[0] in types:
-        assignments = []
-        type = tokens.pop(0)
-        print "Type %s" % type
-        while len(tokens):
-            name = tokens.pop(0)
-            print "Name %s" % name
-            if not is_keyword(name):
-                if tokens[0]=="=":
-                    # Assignment value
-                    tokens.pop(0)
-                    expression,tokens = parse_expression( tokens )
-                    assignments.append((type,name,expression))
-                else:
-                    # Non-Assignmed value
-                    assignments.append((type,name))
-            if tokens[0]==",":
-                tokens.pop(0)
-                continue
-            elif tokens[0]==";":
-                break
-            if len(tokens):
-                print "Parse Error - unknown token encountered at '%s'" % tokens[0]
-                assert(0)
-        statement = ("Assignment", assignments)
+    needsemicolon = True
+    if tokens[0] == "if":
+        statement,tokens = parse_if( tokens )
+        needsemicolon = False
+    elif tokens[0] in types:
+        statement,tokens = parse_assignment( tokens )
     elif tokens[0]=="struct" or tokens[0]=="union":
         statement,tokens = parse_struct(tokens)
     else:
         statement,tokens = parse_expression(tokens)
-    if tokens[0]==";":
-        tokens.pop(0)
-    else:
-        print "Parse Error - Statements must end in a semicolon: found %s instead" % tokens[0]
-        assert(0)
+    if needsemicolon:
+        if tokens[0]==";":
+            tokens.pop(0)
+        else:
+            print "Parse Error - Statements must end in a semicolon: found %s instead" % tokens[0]
+            assert(0)
     #print "Statement",statement,"\n"
     return statement, tokens
 
@@ -247,6 +298,21 @@ def print_thing( thing, depth=0 ):
         for expression in value:
             print_thing(expression,depth+1)
         print "\t"*depth+ "}"
+    elif name=="If":
+        test,action,alternative = value
+     
+        print "\t"*depth+ name
+        print "\t"*depth+ "("
+        print_thing(test,depth+1)
+        print "\t"*depth+ ")"
+        print "\t"*depth+ "{"
+        print_thing(action,depth+1)
+        print "\t"*depth+ "}"
+        if alternative:
+            print "\t"*depth+ "else"
+            print "\t"*depth+ "{"
+            print_thing(alternative,depth+1)
+            print "\t"*depth+ "}"
     else:
         print "\t"*depth+ name
         print "\t"*depth+ value
