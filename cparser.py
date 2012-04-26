@@ -267,6 +267,44 @@ def parse_declaration( tokens ):
             assert(0)
     return ("Declaration", assignments), tokens
 
+def parse_function( tokens ):
+    returntype = tokens.pop(0)
+    name = tokens.pop(0)
+
+    if tokens[0]!="(":
+        print "Parse Error - for must have '(', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    # Arguements
+    arguments = []
+    while len(tokens):
+        # Reached end of Argument List
+        if tokens[0]==")":
+            break
+        type = tokens.pop(0)
+        name = tokens.pop(0)
+        if is_keyword(name):
+            print "Parse Error - Function argument #%d's name '%s' cannot be a keyword" % (len(arguments)+1, name)
+            assert(0)
+        arguments.append( (type,name) )
+        if tokens[0]!=",":
+            break
+        else:
+            tokens.pop(0)
+
+    if tokens[0]!=")":
+        print "Parse Error - functions arguments must have ')', found %s instead" % tokens[0]
+        assert(0)
+    tokens.pop(0)
+
+    if tokens[0]!="{":
+        print "Parse Error - functions must have '{', found %s instead" % tokens[0]
+        assert(0)
+    block,tokens = parse_block( tokens );
+    print "Function",returntype,name,arguments,block
+    return ("Function",(returntype,name,arguments,block)), tokens
+
 def parse_statement( tokens ):
     statement = []
     needsemicolon = True
@@ -278,6 +316,9 @@ def parse_statement( tokens ):
         needsemicolon = False
     elif tokens[0] == "for":
         statement,tokens = parse_for( tokens )
+        needsemicolon = False
+    elif tokens[0] in types and tokens[2] == "(":
+        statement,tokens = parse_function( tokens )
         needsemicolon = False
     elif tokens[0] in types:
         statement,tokens = parse_declaration( tokens )
@@ -393,6 +434,17 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ ")"
         print "\t"*depth+ "{"
         print_thing(action,depth+1)
+        print "\t"*depth+ "}"
+    elif name=="Function":
+        returntype,name,arguments,block = value
+        print "\t"*depth+ returntype
+        print "\t"*depth+ name
+        print "\t"*depth+ "("
+        for argtype,argname in arguments:
+            print "\t"*depth+ argtype,argname
+        print "\t"*depth+ ")"
+        print "\t"*depth+ "{"
+        print_thing(block,depth+1)
         print "\t"*depth+ "}"
     else:
         print "\t"*depth+ name
