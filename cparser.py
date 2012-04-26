@@ -324,6 +324,16 @@ def parse_statement( tokens ):
         statement,tokens = parse_declaration( tokens )
     elif tokens[0]=="struct" or tokens[0]=="union":
         statement,tokens = parse_struct(tokens)
+    elif tokens[0] == "break":
+        statement = ("Break",None)
+        tokens.pop(0)
+    elif tokens[0] == "continue":
+        statement = ("Continue",None)
+        tokens.pop(0)
+    elif tokens[0] == "return":
+        tokens.pop(0)
+        expression,tokens = parse_expression( tokens );
+        statement = ("Return",expression)
     else:
         statement,tokens = parse_expression(tokens)
     if needsemicolon:
@@ -435,6 +445,13 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "{"
         print_thing(action,depth+1)
         print "\t"*depth+ "}"
+    elif name=="Break":
+        print "\t"*depth+ name
+    elif name=="Continue":
+        print "\t"*depth+ name
+    elif name=="Return":
+        print "\t"*depth+ name
+        print_thing(value,depth+1)
     elif name=="Function":
         returntype,name,arguments,block = value
         print "\t"*depth+ returntype
