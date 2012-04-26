@@ -28,7 +28,6 @@ def is_keyword(token):
 def isonly(s,chars):
     return len(s) and all(map(lambda c: c in chars, s))
 
-# Break the text into tokens
 def tokenize( s ):
     # TODO: Need to seperate some tokens better, example if(foo); 
     curtoken = ""
@@ -69,7 +68,6 @@ def tokenize( s ):
     if curtoken not in string.whitespace:
         yield curtoken
 
-# Parse a Value
 def parse_value(tokens):
     if tokens[0] in unary_operations:
         unary = tokens.pop(0)
@@ -234,7 +232,7 @@ def parse_struct( tokens ):
                 print "Parse Error - struct values must end in ';', found %s instead" % tokens[0]
                 assert(0)
             tokens.pop(0)
-            struct.append(("Assignment", [(type,name)]))
+            struct.append(("Declaration", [(type,name)]))
     if tokens[0]!="}":
         print "Parse Error - Blocks must start with 'struct {', found %s instead" % tokens[0]
         assert(0)
@@ -243,7 +241,7 @@ def parse_struct( tokens ):
     print kind, struct
     return (kind, struct), tokens
 
-def parse_assignment( tokens ):
+def parse_declaration( tokens ):
     assignments = []
     type = tokens.pop(0)
     print "Type %s" % type
@@ -252,7 +250,7 @@ def parse_assignment( tokens ):
         print "Name %s" % name
         if not is_keyword(name):
             if tokens[0]=="=":
-                # Assignment value
+                # Declaration value
                 tokens.pop(0)
                 expression,tokens = parse_expression( tokens )
                 assignments.append((type,name,expression))
@@ -267,7 +265,7 @@ def parse_assignment( tokens ):
         if len(tokens):
             print "Parse Error - unknown token encountered at '%s'" % tokens[0]
             assert(0)
-    return ("Assignment", assignments), tokens
+    return ("Declaration", assignments), tokens
 
 def parse_statement( tokens ):
     statement = []
@@ -282,7 +280,7 @@ def parse_statement( tokens ):
         statement,tokens = parse_for( tokens )
         needsemicolon = False
     elif tokens[0] in types:
-        statement,tokens = parse_assignment( tokens )
+        statement,tokens = parse_declaration( tokens )
     elif tokens[0]=="struct" or tokens[0]=="union":
         statement,tokens = parse_struct(tokens)
     else:
@@ -336,14 +334,14 @@ def print_thing( thing, depth=0 ):
         print_thing(expression,depth+1)
     elif name == "Value":
         print "\t"*depth+ value
-    elif name == "Assignment":
+    elif name == "Declaration":
         print "\t"*depth+ name
-        for assignment in value:
-            if len(assignment) == 2:
-                type,name = assignment
+        for declaration in value:
+            if len(declaration) == 2:
+                type,name = declaration
                 print "\t"*depth+ type,name 
             else:
-                type,name,expression = assignment
+                type,name,expression = declaration
                 print "\t"*depth+ type,name, "= ("
                 print_thing(expression,depth+1)
                 print "\t"*depth+ ")"
@@ -410,10 +408,9 @@ if __name__ == "__main__":
     for filename in files:
         print
         data = open(filename,"r").read()
-        for i,token in enumerate(tokenize( data )):
-            print "%d:%s" % (i,token)
         tokens = list(tokenize( data ))
-        print tokens
+        for i,token in enumerate( tokens ):
+            print "%d: %s" % (i,token)
         while len(tokens):
             block, tokens = parse_statement_or_block( tokens )
             print_thing(block)
