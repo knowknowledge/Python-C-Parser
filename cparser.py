@@ -33,10 +33,49 @@ def tokenize( s ):
     symbols = string.punctuation.replace("_","")
     line = 1
     pos = 0
+    in_string = False
+    in_comment = False
     for c in s:
         pos += 1
         #print (c,curtoken)
-        if c in symbols:
+        if in_comment:
+            if c == "\n":
+                in_comment = False
+                line += 1
+            else:
+                pass
+        elif c == '"':
+            if not in_string:
+                # Start of new String
+                if curtoken != "":
+                    yield curtoken
+                in_string = True
+                curtoken = '"'
+            else:
+                # End of String
+                in_string = False
+                curtoken += c
+                yield curtoken
+                curtoken = ""
+        elif in_string:
+            if len(curtoken) and curtoken[-1] == '\\':
+                # Char Symbols
+                if c == "n":
+                    curtoken = curtoken[:-1] + "\n"
+                elif c == "t":
+                    curtoken = curtoken[:-1] + "\t"
+                elif c == "'":
+                    curtoken = curtoken[:-1] + "\'"
+                elif c == '"':
+                    curtoken = curtoken[:-1] + "\""
+                elif c == '\\':
+                    curtoken = curtoken[:-1] + "\\"
+            else:
+                curtoken += c
+        elif c == "/" and curtoken == "/":
+            curtoken = ""
+            in_comment = True
+        elif c in symbols:
             if (curtoken+c) in binary_operations:
                 curtoken = (curtoken+c)
             else:
@@ -74,10 +113,10 @@ def parse_value(tokens):
         #print "Value",unary,name
         return ('Value',unary,name),tokens
     elif is_keyword(tokens[0]):
-        print "Parse Error - Value Expected at %s, found keyword" % tokens[0]
+        print "Parse Error - Value Expected at '%s', found keyword" % tokens[0]
         assert(0)
     elif tokens[0] in string.punctuation:
-        print "Parse Error - Value Expected at %s, found punctuation" % tokens[0]
+        print "Parse Error - Value Expected at '%s', found punctuation" % tokens[0]
         assert(0)
     elif tokens[1] == "(":
         name = tokens.pop(0)
