@@ -32,8 +32,12 @@ class Token(str):
     def set(self,line=0,pos=0):
         self.line = line
         self.pos = pos
-    def pos(self):
+    def position(self):
         return (self.line,self.pos)
+    def __add__(self,other):
+        ret = Token( str(self) + str(other))
+        ret.set(self.line, self.pos )
+        return ret
 
 def tokenize( s ):
     symbols = string.punctuation.replace("_","")
@@ -321,16 +325,16 @@ def parse_struct( tokens ):
         assert(0)
     tokens.pop(0)
     
-    print kind, struct
+    #print kind, struct
     return (kind, struct), tokens
 
 def parse_declaration( tokens ):
     assignments = []
     type = tokens.pop(0)
-    print "Type %s" % type
+    #print "Type %s" % type
     while len(tokens):
         name = tokens.pop(0)
-        print "Name %s" % name
+        #print "Name %s" % name
         if not is_keyword(name):
             if tokens[0]=="=":
                 # Declaration value
@@ -385,7 +389,7 @@ def parse_function( tokens ):
         print "Parse Error at Line %d / Char %d - functions must have '{', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     block,tokens = parse_block( tokens );
-    print "Function",returntype,name,arguments,block
+    #print "Function",returntype,name,arguments,block
     return ("Function",(returntype,name,arguments,block)), tokens
 
 def parse_statement( tokens ):
@@ -541,7 +545,7 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ name
         print "\t"*depth+ "("
         for argtype,argname in arguments:
-            print "\t"*depth+ argtype,argname
+            print "\t"*(depth+1)+ argtype,argname
         print "\t"*depth+ ")"
         print "\t"*depth+ "{"
         print_thing(block,depth+1)
@@ -571,7 +575,8 @@ if __name__ == "__main__":
         data = open(filename,"r").read()
         tokens = list(tokenize( data ))
         for i,token in enumerate( tokens ):
-            print "%d: %s" % (i,token)
+            loc = ("%d (%d,%d): " %(i, token.line, token.pos)).ljust(16)
+            print loc,token
         while len(tokens):
             block, tokens = parse_statement_or_block( tokens )
             print_thing(block)
