@@ -51,6 +51,8 @@ def tokenize( s ):
                     yield curtoken
                 in_string = True
                 curtoken = '"'
+            elif len(curtoken) and curtoken[-1] == '\\':
+                curtoken = curtoken[:-1] + "\""
             else:
                 # End of String
                 in_string = False
@@ -66,8 +68,6 @@ def tokenize( s ):
                     curtoken = curtoken[:-1] + "\t"
                 elif c == "'":
                     curtoken = curtoken[:-1] + "\'"
-                elif c == '"':
-                    curtoken = curtoken[:-1] + "\""
                 elif c == '\\':
                     curtoken = curtoken[:-1] + "\\"
             else:
