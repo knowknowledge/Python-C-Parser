@@ -29,7 +29,6 @@ def isonly(s,chars):
     return len(s) and all(map(lambda c: c in chars, s))
 
 def tokenize( s ):
-    # TODO: Need to seperate some tokens better, example if(foo); 
     curtoken = ""
     symbols = string.punctuation.replace("_","")
     line = 1
@@ -80,6 +79,31 @@ def parse_value(tokens):
     elif tokens[0] in string.punctuation:
         print "Parse Error - Value Expected at %s, found punctuation" % tokens[0]
         assert(0)
+    elif tokens[1] == "(":
+        name = tokens.pop(0)
+        if tokens[0]!="(":
+            print "Parse Error - Function must have '(', found %s instead" % tokens[0]
+            assert(0)
+        tokens.pop(0)
+
+        arguments = []
+        while len(tokens):
+            # Reached end of Argument List
+            if tokens[0]==")":
+                break
+            arg,tokens = parse_expression( tokens )
+            arguments.append( arg )
+            if tokens[0]!=",":
+                break
+            else:
+                tokens.pop(0)
+
+        if tokens[0]!=")":
+            print "Parse Error - Function must have ')', found %s instead" % tokens[0]
+            assert(0)
+        tokens.pop(0)
+
+        return ('Call',(name,arguments)),tokens
     else:
         name = tokens.pop(0)
         #print "Value",name
@@ -463,9 +487,18 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "{"
         print_thing(block,depth+1)
         print "\t"*depth+ "}"
-    else:
+    elif name=="Call":
+        func,arguments = value
         print "\t"*depth+ name
-        print "\t"*depth+ value
+        print "\t"*depth+ func
+        print "\t"*depth+ "("
+        for arg in arguments:
+            print_thing(arg,depth+1)
+        print "\t"*depth+ ")"
+    else:
+        print "\t"*depth+ "Warning!  Unknown type"
+        print "\t"*depth+ str(name)
+        print "\t"*depth+ str(value)
 
 if __name__ == "__main__":
     import sys
