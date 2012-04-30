@@ -1,7 +1,7 @@
 import string
 
-
 # C Keywords
+# ------------------------------------------------------------------------
 types = ["short", "int", "long", "float", "double", "char", "void"]
 containers = ["enum", "struct", "union", "typedef"]
 modifiers = [ "const", "volatile", "extern", "static", "register", "signed", "unsigned"]
@@ -12,7 +12,7 @@ flow = [ "if", "else",
 loops = ["for", "do", "while" "switch", ]
 keywords = types + containers + modifiers + flow + loops + [ "return", "sizeof" ]
 
-unary_operations = ["-","+","*","&"]
+unary_operations = ["-","+","*","&","~"]
 binary_operations = ["+","-","/","*",
                      "^","&","|",
                      "<<",">>",
@@ -22,12 +22,17 @@ binary_operations = ["+","-","/","*",
                      "+=","-=","/=","*=",
                      "^=","&=","|=",
                      "<<=",">>=",]
+
+# Utitlity Functions
+# ------------------------------------------------------------------------
 def is_keyword(token):
     return token in keywords
 
 def isonly(s,chars):
     return len(s) and all(map(lambda c: c in chars, s))
 
+# Token Lexer
+# ------------------------------------------------------------------------
 class Token(str):
     def set(self,line=0,pos=0):
         self.line = line
@@ -130,6 +135,8 @@ def tokenize( s ):
     if curtoken not in string.whitespace:
         yield curtoken
 
+# Token Parser
+# ------------------------------------------------------------------------
 def parse_value(tokens):
     if tokens[0] in unary_operations:
         unary = tokens.pop(0)
@@ -148,7 +155,7 @@ def parse_value(tokens):
             print "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
-
+        # Get the Arguements
         arguments = []
         while len(tokens):
             # Reached end of Argument List
@@ -160,12 +167,12 @@ def parse_value(tokens):
                 break
             else:
                 tokens.pop(0)
-
+        
         if tokens[0]!=")":
             print "Parse Error at Line %d / Char %d - Function must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
-
+        
         return ('Call',(name,arguments)),tokens
     else:
         name = tokens.pop(0)
@@ -182,21 +189,21 @@ def parse_if( tokens ):
         print "Parse Error at Line %d / Char %d - if must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     test,tokens = parse_expression( tokens )
-
+    
     if tokens[0]!=")":
         print "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     action,tokens = parse_statement_or_block(tokens)
-
+    
     alternative = None
     if tokens[0]=="else":
         tokens.pop(0)
         alternative,tokens = parse_statement_or_block(tokens)
-
+    
     #print "If",test,action
     return ("If",(test,action,alternative)), tokens
 
@@ -210,16 +217,16 @@ def parse_while( tokens ):
         print "Parse Error at Line %d / Char %d - while must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     test,tokens = parse_expression( tokens )
-
+    
     if tokens[0]!=")":
         print "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     action,tokens = parse_statement_or_block(tokens)
-
+    
     #print "While",test,action
     return ("While",(test,action)), tokens
 
@@ -233,28 +240,28 @@ def parse_for( tokens ):
         print "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     init,tokens = parse_expression( tokens )
-
+    
     if tokens[0]!=";":
         print "Parse Error at Line %d / Char %d - for must have first ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     test,tokens = parse_expression( tokens )
-
+    
     if tokens[0]!=";":
         print "Parse Error at Line %d / Char %d - for must have second ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     step,tokens = parse_expression( tokens )
-
+    
     if tokens[0]!=")":
         print "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     action,tokens = parse_statement_or_block(tokens)
-
+    
     #print "For",init,test,step,action
     return ("For",(init,test,step,action)), tokens
 
@@ -357,12 +364,12 @@ def parse_declaration( tokens ):
 def parse_function( tokens ):
     returntype = tokens.pop(0)
     name = tokens.pop(0)
-
+    
     if tokens[0]!="(":
         print "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     # Arguements
     arguments = []
     while len(tokens):
@@ -379,12 +386,12 @@ def parse_function( tokens ):
             break
         else:
             tokens.pop(0)
-
+    
     if tokens[0]!=")":
         print "Parse Error at Line %d / Char %d - functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
-
+    
     if tokens[0]!="{":
         print "Parse Error at Line %d / Char %d - functions must have '{', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
@@ -454,6 +461,8 @@ def parse_statement_or_block( tokens ):
     else:
         return parse_statement( tokens )
 
+# Print Abstract Syntax Tree (AST)
+# ------------------------------------------------------------------------
 def print_thing( thing, depth=0 ):
     name,value = thing
     #print "\t"*depth+ "THING:", name,value
@@ -574,9 +583,14 @@ if __name__ == "__main__":
         print
         data = open(filename,"r").read()
         tokens = list(tokenize( data ))
+        # Print out the Lexer
+        print "Lexical Analysis:"
         for i,token in enumerate( tokens ):
             loc = ("%d (%d,%d): " %(i, token.line, token.pos)).ljust(16)
             print loc,token
+
+        # Parse tokens
+        print "Structural Analysis:"
         while len(tokens):
             block, tokens = parse_statement_or_block( tokens )
             print_thing(block)
