@@ -39,10 +39,36 @@ class Token(str):
         self.pos = pos
     def position(self):
         return (self.line,self.pos)
+    def trim(self):
+        ret = Token( str(self)[:-1] )
+        ret.set(self.line, self.pos )
+        return ret
     def __add__(self,other):
         ret = Token( str(self) + str(other))
         ret.set(self.line, self.pos )
         return ret
+
+def escape_character( c, line, pos ):
+    if c == "n":
+        curtoken = Token("\n")
+        curtoken.set(line,pos)
+    elif c == "t":
+        curtoken = Token("\t")
+        curtoken.set(line,pos)
+    elif c == "'":
+        curtoken = Token("\'")
+        curtoken.set(line,pos)
+    elif c == '"':
+        curtoken = Token("\"")
+        curtoken.set(line,pos)
+    elif c == '\\':
+        curtoken = Token("\\")
+        curtoken.set(line,pos)
+    else:
+        print "Lex Error at Line %d / Char %d - Character '%c' cannot be escaped" % (line, pos, c)
+        assert(0)
+    return curtoken
+
 
 def tokenize( s ):
     symbols = string.punctuation.replace("_","")
@@ -51,6 +77,7 @@ def tokenize( s ):
     curtoken = Token("")
     curtoken.set(line,pos)
     in_string = False
+    in_char = False
     in_comment = False
     for c in s:
         pos += 1
@@ -61,7 +88,7 @@ def tokenize( s ):
                 line += 1
             else:
                 pass
-        elif c == '"':
+        elif c == '"' and not in_char:
             if not in_string:
                 # Start of new String
                 if curtoken != "":
@@ -80,22 +107,35 @@ def tokenize( s ):
                 curtoken = Token("")
                 curtoken.set(line,pos)
         elif in_string:
-            if len(curtoken) and curtoken[-1] == '\\':
+            if curtoken.endswith('\\'):
                 # Char Symbols
-                if c == "n":
-                    curtoken = Token(curtoken[:-1] + "\n")
-                    curtoken.set(line,pos)
-                elif c == "t":
-                    curtoken = Token(curtoken[:-1] + "\t")
-                    curtoken.set(line,pos)
-                elif c == "'":
-                    curtoken = Token(curtoken[:-1] + "\'")
-                    curtoken.set(line,pos)
-                elif c == '\\':
-                    curtoken = Token(curtoken[:-1] + "\\")
-                    curtoken.set(line,pos)
+                curtoken = curtoken.trim()
+                curtoken += escape_character( c, line, pos )
             else:
                 curtoken += Token(c)
+        elif in_char:
+            if curtoken.endswith("\\"):
+                # Escape this Character
+                curtoken = curtoken.trim()
+                curtoken += escape_character(c, line, pos)
+            elif c == "'":
+                # End of Character:
+                curtoken += c
+                if len(curtoken) != 3:
+                    print "Lex Error at Line %d / Char %d - Character '%s' is too long." % (curtoken.line, curtoken.pos, c)
+                yield curtoken
+                in_char = False
+                curtoken = Token("")
+                curtoken.set(line,pos)
+            else:
+                curtoken += c
+        elif c == "'" and not in_string:
+            # Start of Character:
+            if curtoken != "":
+                yield curtoken
+            curtoken = Token("'")
+            curtoken.set(line,pos)
+            in_char = True
         elif c == "/" and curtoken == "/":
             curtoken = Token("")
             curtoken.set(line,pos)
