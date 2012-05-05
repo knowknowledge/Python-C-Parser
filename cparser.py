@@ -21,7 +21,9 @@ binary_operations = ["+","-","/","*",
                      "=",
                      "+=","-=","/=","*=",
                      "^=","&=","|=",
-                     "<<=",">>=",]
+                     "<<=",">>=",
+                     ".","->"
+                    ]
 
 # Utitlity Functions
 # ------------------------------------------------------------------------
@@ -209,9 +211,9 @@ def tokenize( s ):
 def parse_value(tokens):
     if tokens[0] in unary_operations:
         unary = tokens.pop(0)
-        name = tokens.pop(0)
+        inner,tokens = parse_value( tokens )
         #print "Value",unary,name
-        return ('Value',unary,name),tokens
+        return ('Math',(unary,inner)),tokens
     elif is_keyword(tokens[0]):
         print "Parse Error at Line %d / Char %d - Value Expected at '%s', found keyword" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
@@ -220,6 +222,18 @@ def parse_value(tokens):
         assert(0)
     elif tokens[1] == "(":
         return parse_call( tokens )
+    elif tokens[1] == "[":
+        name = tokens.pop(0)
+        if tokens[0]!="[":
+            print "Parse Error at Line %d / Char %d - Accessor must have '[', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            assert(0)
+        tokens.pop(0)
+        index,tokens = parse_expression( tokens )
+        if tokens[0]!="]":
+            print "Parse Error at Line %d / Char %d - Function must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            assert(0)
+        tokens.pop(0)
+        return ('Index',(name, index) ),tokens
     else:
         name = tokens.pop(0)
         #print "Value",name
@@ -359,6 +373,8 @@ def parse_expression( tokens ):
         elif tokens[0] == ",":
             break
         elif tokens[0] == ")":
+            break
+        elif tokens[0] == "]":
             break
         else:
             value,tokens = parse_value( tokens )
@@ -550,11 +566,20 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "Statement"
         pass
     elif name == "Math":
+        print "\t"*depth+ "Math"
         symbol, expression = value
         print "\t"*depth+symbol
         print_thing(expression,depth+1)
     elif name == "Value":
+        print "\t"*depth+ "Value"
         print "\t"*depth+ value
+    elif name == "Index":
+        print "\t"*depth+ "Index"
+        name, expression = value
+        print "\t"*depth+ name
+        print "\t"*depth+ "["
+        print_thing(expression,depth+1)
+        print "\t"*depth+ "]"
     elif name == "Declaration":
         print "\t"*depth+ name
         for declaration in value:
