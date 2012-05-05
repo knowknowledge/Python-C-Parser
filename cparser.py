@@ -2,7 +2,7 @@ import string
 
 # C Keywords
 # ------------------------------------------------------------------------
-types = ["short", "int", "long", "float", "double", "char", "void"]
+types = ["short", "int", "long", "float", "double", "char", "void", "bool"]
 containers = ["enum", "struct", "union", "typedef"]
 modifiers = [ "const", "volatile", "extern", "static", "register", "signed", "unsigned"]
 flow = [ "if", "else",
@@ -219,34 +219,37 @@ def parse_value(tokens):
         print "Parse Error at Line %d / Char %d - Value Expected at '%s', found punctuation" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     elif tokens[1] == "(":
-        name = tokens.pop(0)
-        if tokens[0]!="(":
-            print "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-            assert(0)
-        tokens.pop(0)
-        # Get the Arguements
-        arguments = []
-        while len(tokens):
-            # Reached end of Argument List
-            if tokens[0]==")":
-                break
-            arg,tokens = parse_expression( tokens )
-            arguments.append( arg )
-            if tokens[0]!=",":
-                break
-            else:
-                tokens.pop(0)
-        
-        if tokens[0]!=")":
-            print "Parse Error at Line %d / Char %d - Function must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-            assert(0)
-        tokens.pop(0)
-        
-        return ('Call',(name,arguments)),tokens
+        return parse_call( tokens )
     else:
         name = tokens.pop(0)
         #print "Value",name
         return ('Value',name),tokens
+
+def parse_call(tokens ):
+    name = tokens.pop(0)
+    if tokens[0]!="(":
+        print "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(0)
+    tokens.pop(0)
+    # Get the Arguements
+    arguments = []
+    while len(tokens):
+        # Reached end of Argument List
+        if tokens[0]==")":
+            break
+        arg,tokens = parse_expression( tokens )
+        arguments.append( arg )
+        if tokens[0]!=",":
+            break
+        else:
+            tokens.pop(0)
+    
+    if tokens[0]!=")":
+        print "Parse Error at Line %d / Char %d - Function must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(0)
+    tokens.pop(0)
+    
+    return ('Call',(name,arguments)),tokens
 
 def parse_if( tokens ):
     if tokens[0] not in ["if"]:
