@@ -72,6 +72,9 @@ def escape_character( c, line, pos ):
 
 def tokenize( s ):
     symbols = string.punctuation.replace("_","")
+    digital = string.digits
+    floating = string.digits + "."
+    hexal = string.hexdigits
     line = 1
     pos = 0
     curtoken = Token("")
@@ -79,12 +82,14 @@ def tokenize( s ):
     in_string = False
     in_char = False
     in_comment = False
+    in_pragma = False
     for c in s:
         pos += 1
         #print (c,curtoken)
-        if in_comment:
+        if in_comment or in_pragma:
             if c == "\n":
                 in_comment = False
+                in_pragma = False
                 line += 1
             else:
                 pass
@@ -136,6 +141,12 @@ def tokenize( s ):
             curtoken = Token("'")
             curtoken.set(line,pos)
             in_char = True
+        elif c == "#":
+            if curtoken != "":
+                yield curtoken
+            curtoken = Token("")
+            curtoken.set(line,pos)
+            in_pragma = True
         elif c == "/" and curtoken == "/":
             curtoken = Token("")
             curtoken.set(line,pos)
@@ -144,6 +155,8 @@ def tokenize( s ):
             if (curtoken+c) in binary_operations:
                 curtoken = Token((curtoken+c))
                 curtoken.set(line,pos)
+            elif c=='.' and isonly(curtoken, floating):
+                curtoken += Token(c)
             else:
                 if curtoken != "":
                     yield curtoken
@@ -164,9 +177,14 @@ def tokenize( s ):
                     pos = 0
                 curtoken = Token("")
                 curtoken.set(line,pos)
-            elif c in string.digits:
+            # Int
+            elif c in digital and isonly(curtoken,digital):
                 curtoken += Token(c)
-            elif curtoken.startswith("0x") and c in string.hexdigits and isonly(curtoken[2:],string.digits):
+            # Float
+            elif c in floating and isonly(curtoken, floating):
+                curtoken += Token(c)
+            # Hex
+            elif curtoken.startswith("0x") and c in hexal and isonly(curtoken[2:], hexal):
                 curtoken += Token(c)
             elif curtoken == "0" and c in "xX":
                 curtoken += Token(c)
@@ -417,6 +435,8 @@ def parse_function( tokens ):
         if tokens[0]==")":
             break
         type = tokens.pop(0)
+        if type == "void" and tokens[0]==")":
+            break
         name = tokens.pop(0)
         if is_keyword(name):
             print "Parse Error at Line %d / Char %d - Function argument #%d's name '%s' cannot be a keyword" % (len(arguments)+1, name)
