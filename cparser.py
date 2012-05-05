@@ -87,12 +87,20 @@ def tokenize( s ):
         pos += 1
         #print (c,curtoken)
         if in_comment or in_pragma:
-            if c == "\n":
-                in_comment = False
-                in_pragma = False
+            if c=="\n":
+                if curtoken.startswith("//") or curtoken.startswith("#") :
+                    curtoken = Token("")
+                    curtoken.set(line,pos)
+                    in_comment = False
+                    in_pragma = False
                 line += 1
+            elif c=='/' and curtoken.endswith("*"):
+                print "End */"
+                curtoken = Token("")
+                curtoken.set(line,pos)
+                in_comment = False
             else:
-                pass
+                curtoken += c
         elif c == '"' and not in_char:
             if not in_string:
                 # Start of new String
@@ -144,12 +152,15 @@ def tokenize( s ):
         elif c == "#":
             if curtoken != "":
                 yield curtoken
-            curtoken = Token("")
+            curtoken = Token("#")
             curtoken.set(line,pos)
             in_pragma = True
+        elif curtoken=="/" and c=="*":
+            print "Start /*"
+            curtoken += Token(c)
+            in_comment = True
         elif c == "/" and curtoken == "/":
-            curtoken = Token("")
-            curtoken.set(line,pos)
+            curtoken += Token(c)
             in_comment = True
         elif c in symbols:
             if (curtoken+c) in binary_operations:
@@ -650,6 +661,7 @@ if __name__ == "__main__":
             print loc,token
 
         # Parse tokens
+        print
         print "Structural Analysis:"
         while len(tokens):
             block, tokens = parse_statement_or_block( tokens )
