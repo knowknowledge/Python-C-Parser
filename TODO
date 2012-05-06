@@ -1,16 +1,12 @@
 These features have not yet been implemented.
 ------------------------------------------------------------------------
- 1	switch (case, default)
- 2	do-while
- 3	goto labels
- 4	Modifiers (const, volatile, extern, ...)
- 5	enum
- 6	typedef
- 7	Arrays
- 8	Pointers (*, &)
- 9	Complex Types (function pointers)
-10	c style comments /* */
-11	C Preprocessor (#defines, #includes, #pragma?)
-12	ternary operations ( foo ? bar : baz )
-13	sizeof
+ 1	do-while
+ 2	goto labels
+ 3	Modifiers (const, volatile, extern, ...)
+ 4	enum
+ 5	typedef
+ 6	Arrays
+ 7	Complex Types (function pointers)
+ 8	ternary operations ( foo ? bar : baz )
+ 9	sizeof
 

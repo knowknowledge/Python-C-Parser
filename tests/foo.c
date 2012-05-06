@@ -12,6 +12,7 @@ int bar( int a,int b )
         continue;
         return;
     }
+    return 10;
 }
 
 int main() {
@@ -44,6 +45,24 @@ int main() {
             int zab;
         };
     };
+    switch( a ) {
+        case 1:
+            foo();
+            break;
+        case 2:
+            foo();
+            break;
+        case 3:
+            foo();
+            break;
+        case 4:
+            foo();
+            break;
+        default:
+            foo();
+            break;
+    }
+    foobar:
     int bar = 1;
     3;
     foo /= 5 || ;

@@ -22,7 +22,7 @@ binary_operations = ["+","-","/","*",
                      "+=","-=","/=","*=",
                      "^=","&=","|=",
                      "<<=",">>=",
-                     ".","->"
+                     ".","->",
                     ]
 
 # Utitlity Functions
@@ -97,7 +97,6 @@ def tokenize( s ):
                     in_pragma = False
                 line += 1
             elif c=='/' and curtoken.endswith("*"):
-                print "End */"
                 curtoken = Token("")
                 curtoken.set(line,pos)
                 in_comment = False
@@ -158,7 +157,6 @@ def tokenize( s ):
             curtoken.set(line,pos)
             in_pragma = True
         elif curtoken=="/" and c=="*":
-            print "Start /*"
             curtoken += Token(c)
             in_comment = True
         elif c == "/" and curtoken == "/":
@@ -225,12 +223,12 @@ def parse_value(tokens):
     elif tokens[1] == "[":
         name = tokens.pop(0)
         if tokens[0]!="[":
-            print "Parse Error at Line %d / Char %d - Accessor must have '[', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print "Parse Error at Line %d / Char %d - Array Accessor must have '[', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
         index,tokens = parse_expression( tokens )
         if tokens[0]!="]":
-            print "Parse Error at Line %d / Char %d - Function must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print "Parse Error at Line %d / Char %d - Array Accessor must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
         return ('Index',(name, index) ),tokens
@@ -423,6 +421,28 @@ def parse_struct( tokens ):
     #print kind, struct
     return (kind, struct), tokens
 
+def parse_switch(tokens):
+    if tokens[0] not in ["switch"]:
+        print "Parse Error at Line %d / Char %d - switch must start with 'switch', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(0)
+    tokens.pop(0)
+    
+    if tokens[0]!="(":
+        print "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(0)
+    tokens.pop(0)
+    
+    test,tokens = parse_expression( tokens )
+    
+    if tokens[0]!=")":
+        print "Parse Error at Line %d / Char %d - functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(0)
+    tokens.pop(0)
+
+    block,tokens = parse_block( tokens )
+
+    return ( "Switch", (test,block) ), tokens
+
 def parse_declaration( tokens ):
     assignments = []
     type = tokens.pop(0)
@@ -454,7 +474,7 @@ def parse_function( tokens ):
     name = tokens.pop(0)
     
     if tokens[0]!="(":
-        print "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
@@ -467,23 +487,23 @@ def parse_function( tokens ):
         type = tokens.pop(0)
         if type == "void" and tokens[0]==")":
             break
-        name = tokens.pop(0)
+        argname = tokens.pop(0)
         if is_keyword(name):
             print "Parse Error at Line %d / Char %d - Function argument #%d's name '%s' cannot be a keyword" % (len(arguments)+1, name)
             assert(0)
-        arguments.append( (type,name) )
+        arguments.append( (type,argname) )
         if tokens[0]!=",":
             break
         else:
             tokens.pop(0)
     
     if tokens[0]!=")":
-        print "Parse Error at Line %d / Char %d - functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print "Parse Error at Line %d / Char %d - Functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     if tokens[0]!="{":
-        print "Parse Error at Line %d / Char %d - functions must have '{', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print "Parse Error at Line %d / Char %d - Functions must have '{', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     block,tokens = parse_block( tokens );
     #print "Function",returntype,name,arguments,block
@@ -508,12 +528,38 @@ def parse_statement( tokens ):
         statement,tokens = parse_declaration( tokens )
     elif tokens[0]=="struct" or tokens[0]=="union":
         statement,tokens = parse_struct(tokens)
+    elif tokens[0] == "switch":
+        statement,tokens = parse_switch(tokens)
+        needsemicolon = False
     elif tokens[0] == "break":
         statement = ("Break",None)
         tokens.pop(0)
     elif tokens[0] == "continue":
         statement = ("Continue",None)
         tokens.pop(0)
+    elif tokens[0] == "case":
+        tokens.pop(0)
+        literal,tokens = parse_value(tokens)
+        statement = ("Case",literal)
+        if tokens[0]!=":":
+            print "Parse Error at Line %d / Char %d - case must end in a colon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(tokens[0] == ":")
+        tokens.pop(0)
+        needsemicolon = False
+    elif tokens[0] == "default":
+        tokens.pop(0)
+        statement = ("default",None)
+        if tokens[0]!=":":
+            print "Parse Error at Line %d / Char %d - default must end in a colon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(tokens[0] == ":")
+        tokens.pop(0)
+        needsemicolon = False
+    elif tokens[1] == ":":
+        label = tokens.pop(0)
+        statement = ("Label",label)
+        assert(tokens[0] == ":")
+        tokens.pop(0)
+        needsemicolon = False
     elif tokens[0] == "return":
         tokens.pop(0)
         expression,tokens = parse_expression( tokens );
@@ -525,7 +571,7 @@ def parse_statement( tokens ):
             tokens.pop(0)
         else:
             print "Parse Error at Line %d / Char %d - Statements must end in a semicolon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-            assert(0)
+            assert(tokens[0]!=";")
     #print "Statement",statement,"\n"
     return statement, tokens
 
@@ -647,10 +693,17 @@ def print_thing( thing, depth=0 ):
     elif name=="Return":
         print "\t"*depth+ name
         print_thing(value,depth+1)
+    elif name=="Case":
+        print "\t"*depth+ name
+        print_thing(value,depth+1)
+    elif name=="Label":
+        print "\t"*depth+ name
+        print "\t"*(depth+1)+ value
+    elif name=="default":
+        print "\t"*depth+ name
     elif name=="Function":
         returntype,name,arguments,block = value
-        print "\t"*depth+ returntype
-        print "\t"*depth+ name
+        print "\t"*depth+ returntype + " " + name
         print "\t"*depth+ "("
         for argtype,argname in arguments:
             print "\t"*(depth+1)+ argtype,argname
@@ -666,8 +719,17 @@ def print_thing( thing, depth=0 ):
         for arg in arguments:
             print_thing(arg,depth+1)
         print "\t"*depth+ ")"
+    elif name=="Switch":
+        test,block = value
+        print "\t"*depth+ name
+        print "\t"*depth+ "("
+        print_thing(test,depth+1)
+        print "\t"*depth+ ")"
+        print "\t"*depth+ "{"
+        print_thing(block,depth+1)
+        print "\t"*depth+ "}"
     else:
-        print "\t"*depth+ "Warning!  Unknown type"
+        print "\t"*depth+ "Warning!  Unknown type '%s'" % name
         print "\t"*depth+ str(name)
         print "\t"*depth+ str(value)
 
@@ -679,7 +741,7 @@ if __name__ == "__main__":
         for filenames in glob.glob( arg ):
                 files.append( filenames )
     for filename in files:
-        print
+        print filename
         data = open(filename,"r").read()
         tokens = list(tokenize( data ))
         # Print out the Lexer
@@ -694,4 +756,4 @@ if __name__ == "__main__":
         while len(tokens):
             block, tokens = parse_statement_or_block( tokens )
             print_thing(block)
-            
+        print
