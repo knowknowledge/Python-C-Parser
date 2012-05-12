@@ -12,7 +12,9 @@ flow = [ "if", "else",
 loops = ["for", "do", "while" "switch", ]
 keywords = types + containers + modifiers + flow + loops + [ "return", "sizeof" ]
 
-unary_operations = ["-","+","*","&","~"]
+
+prefix_operations = ["-","+","*","&","~","!","++","--"]
+postfix_operations = ["++", "--"]
 binary_operations = ["+","-","/","*",
                      "^","&","|",
                      "<<",">>",
@@ -24,6 +26,8 @@ binary_operations = ["+","-","/","*",
                      "<<=",">>=",
                      ".","->",
                     ]
+operators = prefix_operations + binary_operations
+
 
 # Utitlity Functions
 # ------------------------------------------------------------------------
@@ -163,7 +167,7 @@ def tokenize( s ):
             curtoken += Token(c)
             in_comment = True
         elif c in symbols:
-            if (curtoken+c) in binary_operations:
+            if (curtoken+c) in operators:
                 curtoken = Token((curtoken+c))
                 curtoken.set(line,pos)
             elif c=='.' and isonly(curtoken, floating):
@@ -207,11 +211,10 @@ def tokenize( s ):
 # Token Parser
 # ------------------------------------------------------------------------
 def parse_value(tokens):
-    if tokens[0] in unary_operations:
+    if tokens[0] in prefix_operations:
         unary = tokens.pop(0)
-        inner,tokens = parse_value( tokens )
-        #print "Value",unary,name
-        return ('Math',(unary,inner)),tokens
+        value,tokens = parse_value( tokens )
+        inner = ('Prefix',(unary,value))
     elif is_keyword(tokens[0]):
         print "Parse Error at Line %d / Char %d - Value Expected at '%s', found keyword" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
@@ -219,7 +222,7 @@ def parse_value(tokens):
         print "Parse Error at Line %d / Char %d - Value Expected at '%s', found punctuation" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     elif tokens[1] == "(":
-        return parse_call( tokens )
+        inner,tokens = parse_call( tokens )
     elif tokens[1] == "[":
         name = tokens.pop(0)
         if tokens[0]!="[":
@@ -231,11 +234,18 @@ def parse_value(tokens):
             print "Parse Error at Line %d / Char %d - Array Accessor must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
-        return ('Index',(name, index) ),tokens
+        inner = ('Index',(name, index) )
     else:
         name = tokens.pop(0)
+        inner = ('Value',name)
         #print "Value",name
-        return ('Value',name),tokens
+    # Check for postfix unaray operations
+    if tokens[0] in postfix_operations:
+        unary = tokens.pop(0)
+        #print "Value",unary,name
+        inner = ('Postfix',(inner,unary))
+    return inner,tokens
+    
 
 def parse_call(tokens ):
     name = tokens.pop(0)
@@ -353,7 +363,6 @@ def parse_expression( tokens ):
     # This should be a tree not a list
     expression = []
     while len(tokens):
-        #TODO: Add Unary Operators
         #TODO: Add Ternary Operator "?:"
         #TODO: Add Comma
         #TODO: Symbol Symbol should be illegal
@@ -616,10 +625,20 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "Statement"
         pass
     elif name == "Math":
+        symbol, expression = value
         print "\t"*depth+ "Math"
+        print "\t"*depth+symbol
+        print_thing(expression,depth+1)
+    elif name == "Prefix":
+        print "\t"*depth+ "Prefix"
         symbol, expression = value
         print "\t"*depth+symbol
         print_thing(expression,depth+1)
+    elif name == "Postfix":
+        print "\t"*depth+ "Postfix"
+        expression, symbol = value
+        print_thing(expression,depth+1)
+        print "\t"*depth+symbol
     elif name == "Value":
         print "\t"*depth+ "Value"
         print "\t"*depth+ value

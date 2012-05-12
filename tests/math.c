@@ -10,6 +10,16 @@ int main() {
     total += div(a*10,b);
     total += add(a,10);
     total += sub(a,b);
+
+    b = 1 + 4 * ( 2 + 1 ) ;
+    ++b;
+    b++;
+    --b;
+    b--;
+    
+    if( !a )
+        return -1;
+
     return total;
 }
 
