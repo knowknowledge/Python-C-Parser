@@ -78,4 +78,7 @@ int main() {
         bar = 0x100;
     }
     foo(1,2,3,4,foo());
+    if( age < 0 ) {
+        goto foobar;
+    }
 }

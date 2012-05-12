@@ -560,6 +560,10 @@ def parse_statement( tokens ):
         assert(tokens[0] == ":")
         tokens.pop(0)
         needsemicolon = False
+    elif tokens[0] == "goto":
+        tokens.pop(0)
+        label = tokens.pop(0)
+        statement = ("Goto",label)
     elif tokens[0] == "return":
         tokens.pop(0)
         expression,tokens = parse_expression( tokens );
@@ -699,6 +703,9 @@ def print_thing( thing, depth=0 ):
     elif name=="Label":
         print "\t"*depth+ name
         print "\t"*(depth+1)+ value
+    elif name=="Goto":
+        print "\t"*depth+ name
+        print "\t"*(depth+1)+ value
     elif name=="default":
         print "\t"*depth+ name
     elif name=="Function":
@@ -729,7 +736,7 @@ def print_thing( thing, depth=0 ):
         print_thing(block,depth+1)
         print "\t"*depth+ "}"
     else:
-        print "\t"*depth+ "Warning!  Unknown type '%s'" % name
+        print "\t"*depth+ "Warning!  Unknown type '", name,"'"
         print "\t"*depth+ str(name)
         print "\t"*depth+ str(value)
 
