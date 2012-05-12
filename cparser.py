@@ -15,19 +15,42 @@ keywords = types + containers + modifiers + flow + loops + [ "return", "sizeof" 
 
 prefix_operations = ["-","+","*","&","~","!","++","--"]
 postfix_operations = ["++", "--"]
-binary_operations = ["+","-","/","*",
-                     "^","&","|",
-                     "<<",">>",
-                     "<",">", "<=",">=",
-                     "&&","||","==","!=",
-                     "=",
-                     "+=","-=","/=","*=",
-                     "^=","&=","|=",
-                     "<<=",">>=",
-                     ".","->",
+selection_operations = [".","->"] # Left-to-Right
+multiplication_operations = ["*","/","%"] # Left-to-Right
+addition_operations = ["+","-"] # Left-to-Right
+bitshift_operations = ["<<",">>"] # Left-to-Right
+relation_operations = ["<","<=",">",">="] # Left-to-Right
+equality_operations = ["==","!="] # Left-to-Right
+bitwise_operations = ["&", "^", "|"] # Left-to-Right
+logical_operations = ["&&","||"]
+# Ternary () ? () : ()
+assignment_operations = ["=", # Right-to-Left
+                        "+=","-=",
+                        "/=","*=","%="
+                        "<<=",">>=",
+                     "&=","^=","|=",
                     ]
-operators = prefix_operations + binary_operations
+binary_operations = multiplication_operations + \
+                    addition_operations + \
+                    bitshift_operations + \
+                    relation_operations + \
+                    equality_operations + \
+                    bitwise_operations  + \
+                    logical_operations  + \
+                    assignment_operations + selection_operations
 
+operators = prefix_operations +  binary_operations
+precedence = [
+    selection_operations,
+    multiplication_operations,
+    addition_operations,
+    bitshift_operations,
+    relation_operations,
+    equality_operations,
+    ["&"],["^"],["|"],
+    logical_operations,
+    assignment_operations,
+    ]
 
 # Utitlity Functions
 # ------------------------------------------------------------------------
@@ -36,6 +59,21 @@ def is_keyword(token):
 
 def isonly(s,chars):
     return len(s) and all(map(lambda c: c in chars, s))
+
+def intersection(list1,list2):
+    try:
+        return len(set(list1) & set(list2)) > 0
+    except TypeError:
+        print "Can't find the intersection of these:"
+        print list1
+        print list2
+        assert(0)
+
+def first_instance(haystack, needles ):
+    for i,hay in enumerate(haystack):
+        if hay in needles:
+            return i
+    raise ValueError("%s does not contain one of %s"%(str(haystack),str(needles)))
 
 # Token Lexer
 # ------------------------------------------------------------------------
@@ -371,7 +409,9 @@ def parse_expression( tokens ):
             inner,tokens = parse_expression( tokens )
             expression.append( inner )
             if tokens[0] != ")":
-                print "Parse Error at Line %d / Char %d -')' expected after expression %s" % inner
+                for e in expression:
+                    print e
+                print "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
                 assert(0)
             tokens.pop(0)
             break
@@ -383,16 +423,42 @@ def parse_expression( tokens ):
             break
         elif tokens[0] == "]":
             break
+        # Get the next value
         else:
             value,tokens = parse_value( tokens )
             expression.append( value )
             # TODO: Add Right/Left Associations
             if tokens[0] in binary_operations:
                 symbol = tokens.pop(0)
-                right,tokens = parse_expression( tokens )
-                expression.append( ("Math", (symbol, right) ) )
-    #print "Expression", tuple(expression)
-    return ("Expression", tuple(expression)),tokens
+                expression.append( ("Math", (symbol) ) )
+            else:
+                #print "Didn't find an operator, found",str(tokens[0]),"instead"
+                pass
+    # Fix precedence
+    if len(expression) > 1:
+        while len(expression) > 1:
+            # The expressions should always be of the form:
+            # Value Math Value Math Value
+            symbols = [ sym[1] for sym in expression[1::2] ]
+            for ops in precedence:
+                if intersection( symbols, ops):
+                    #print "Precedence Level",ops
+                    i = (2 * first_instance( symbols, ops )) + 1
+                    symbol = expression[i][1]
+                    before,after = expression[:i-1],expression[i+2:]
+                    right,left = expression[i-1],expression[i+1]
+                    math = ("Binary",(symbol,right,left))
+                    #print math
+                    expression = before + [("Expression", math)] + after
+                    break
+    if len(expression) == 1:
+        return ("Expression",expression[0]),tokens
+    elif len(expression) == 0:
+        return ("Expression",[]),tokens
+    else:
+        print "Parse Error at Line %d / Char %d - Couldn't compress expression into tree" % (tokens[0].line, tokens[0].pos)
+        assert(0)
+
 
 def parse_struct( tokens ):
     struct = []
@@ -613,7 +679,12 @@ def parse_statement_or_block( tokens ):
 # Print Abstract Syntax Tree (AST)
 # ------------------------------------------------------------------------
 def print_thing( thing, depth=0 ):
-    name,value = thing
+    try:
+        name,value = thing
+    except ValueError:
+        print "Can't Unpack this variable:"
+        print thing
+        assert(0)
     #print "\t"*depth+ "THING:", name,value
     if name == "Block":
         print "\t"*depth+ "Block"
@@ -625,10 +696,10 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "Statement"
         pass
     elif name == "Math":
-        symbol, expression = value
+        symbol = value
         print "\t"*depth+ "Math"
         print "\t"*depth+symbol
-        print_thing(expression,depth+1)
+        assert(0)
     elif name == "Prefix":
         print "\t"*depth+ "Prefix"
         symbol, expression = value
@@ -639,6 +710,14 @@ def print_thing( thing, depth=0 ):
         expression, symbol = value
         print_thing(expression,depth+1)
         print "\t"*depth+symbol
+    elif name == "Binary":
+        symbol,left,right = value
+        print "\t"*depth+ "("
+        print "\t"*depth+ "Math '%s'" % symbol
+        print_thing(left,depth+1)
+        print "\t"*depth+ symbol
+        print_thing(right,depth+1)
+        print "\t"*depth+ ")"
     elif name == "Value":
         print "\t"*depth+ "Value"
         print "\t"*depth+ value
@@ -663,8 +742,8 @@ def print_thing( thing, depth=0 ):
     elif name == "Expression":
         print "\t"*depth+ name
         print "\t"*depth+ "("
-        for expression in value:
-            print_thing(expression,depth+1)
+        if value:
+            print_thing(value,depth+1)
         print "\t"*depth+ ")"
     elif name=="Struct" or name=="Union":
         print "\t"*depth+ name

@@ -16,6 +16,8 @@ int main() {
     b++;
     --b;
     b--;
+
+    b = ++a + b--;
     
     if( !a )
         return -1;

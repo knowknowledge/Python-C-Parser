@@ -16,7 +16,7 @@ double compute_fn(double z)
  
         double r;  // [4]
  
-        r = 7.0 - 3.0/(z - 2.0 - 1.0/(z - 7.0 + 10.0/(z - 2.0 - 2.0/(z - 3.0)))); // [5]
+        r = 7.0 - 3.0 / (z - 2.0 - 1.0/(z - 7.0 + 10.0/(z - 2.0 - 2.0/(z - 3.0)))); // [5]
  
         feclearexcept(FE_DIVBYZERO); // [6]
  
@@ -29,7 +29,7 @@ double compute_fn(double z)
 int main(void)
 {
 #ifndef __STDC_IEC_559__
-        printf("Warning: __STDC_IEC_559__ not defined. IEEE 754 floating point not fully supported.\n") // [8]
+        printf("Warning: __STDC_IEC_559__ not defined. IEEE 754 floating point not fully supported.\n"); // [8]
 #endif
  
        #pragma STDC FENV_ACCESS ON 

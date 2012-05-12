@@ -65,7 +65,7 @@ int main() {
     foobar:
     int bar = 1;
     3;
-    foo /= 5 || ;
+    foo /= 5 || 10;
     if( foobar ) bax += test;
     else if ( baz )
         bax -= test;
