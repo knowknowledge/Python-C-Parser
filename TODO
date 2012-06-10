@@ -1,12 +1,10 @@
 These features have not yet been implemented.
 ------------------------------------------------------------------------
  1	do-while
- 2	goto labels
- 3	Modifiers (const, volatile, extern, ...)
- 4	enum
- 5	typedef
- 6	Arrays
- 7	Complex Types (function pointers)
- 8	ternary operations ( foo ? bar : baz )
- 9	sizeof
-
+ 2	Modifiers (const, volatile, extern, ...)
+ 3	enum
+ 4	typedef
+ 5	Arrays
+ 6	Complex Types (function pointers)
+ 7	ternary operations ( foo ? bar : baz )
+ 8	sizeof
