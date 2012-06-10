@@ -476,18 +476,13 @@ def parse_struct( tokens ):
         if tokens[0]=="struct" or tokens[0]=="union":
             inner,tokens = parse_struct(tokens)
             struct.append(inner)
-            if tokens[0]!=";":
-                print "Parse Error at Line %d / Char %d - struct values must end in ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-                assert(0)
-            tokens.pop(0)
         else:
-            type = tokens.pop(0)
-            name = tokens.pop(0)
-            if tokens[0]!=";":
-                print "Parse Error at Line %d / Char %d - struct values must end in ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-                assert(0)
-            tokens.pop(0)
-            struct.append(("Declaration", [(type,name)]))
+            declaration,tokens = parse_declaration(tokens)
+            struct.append(declaration)
+        if tokens[0]!=";":
+            print "Parse Error at Line %d / Char %d - struct values must end in ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            assert(0)
+        tokens.pop(0)
     if tokens[0]!="}":
         print "Parse Error at Line %d / Char %d - Blocks must start with 'struct {', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
@@ -518,22 +513,45 @@ def parse_switch(tokens):
 
     return ( "Switch", (test,block) ), tokens
 
+def parse_type(tokens):
+    mods = []
+    while tokens[0] in modifiers:
+        mods.append( tokens.pop(0) )
+    if not ( tokens[0] in types ):
+        print "Parse Error at Line %d / Char %d - expected type but found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert( tokens[0] in types )
+    type = tokens.pop(0)
+    isPointer = False
+    if tokens[0] == "*":
+        isPointer = True
+        tokens.pop(0)
+    #print "Type %s" % (" ".join(mods) + type + ("*" if isPointer else ""))
+    return ("Type", (mods, type, isPointer)), tokens
+
 def parse_declaration( tokens ):
     assignments = []
-    type = tokens.pop(0)
-    #print "Type %s" % type
+    type, tokens = parse_type( tokens )
     while len(tokens):
+        # Check if it's a pointer
         name = tokens.pop(0)
         #print "Name %s" % name
+        length = None
+        if tokens[0]=="[":
+            tokens.pop(0)
+            length,tokens = parse_expression( tokens )
+            if tokens[0]!="]":
+                print "Parse Error at Line %d / Char %d - Array Definition must end with ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+                assert(0)
+            tokens.pop(0)
         if not is_keyword(name):
             if tokens[0]=="=":
                 # Declaration value
                 tokens.pop(0)
                 expression,tokens = parse_expression( tokens )
-                assignments.append((type,name,expression))
+                assignments.append((type,name,length,expression))
             else:
                 # Non-Assignmed value
-                assignments.append((type,name))
+                assignments.append((type,name,length))
         if tokens[0]==",":
             tokens.pop(0)
             continue
@@ -599,7 +617,7 @@ def parse_statement( tokens ):
     elif tokens[0] in types and tokens[2] == "(":
         statement,tokens = parse_function( tokens )
         needsemicolon = False
-    elif tokens[0] in types:
+    elif tokens[0] in types or tokens[0] in modifiers:
         statement,tokens = parse_declaration( tokens )
     elif tokens[0]=="struct" or tokens[0]=="union":
         statement,tokens = parse_struct(tokens)
@@ -728,15 +746,25 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "["
         print_thing(expression,depth+1)
         print "\t"*depth+ "]"
+    elif name == "Type":
+        print "\t"*depth+ "Type"
+        mods, type, isPointer = value
+        print "\t"*depth+ ("Pointer to " if isPointer else "") + " ".join(mods) + type
     elif name == "Declaration":
         print "\t"*depth+ name
         for declaration in value:
-            if len(declaration) == 2:
-                type,name = declaration
-                print "\t"*depth+ type,name 
+            if len(declaration) == 3:
+                type,name,length = declaration
+                if length:
+                    print "\t"*(depth+1)+ "Array of length"
+                    print_thing(length,depth+1)
+                print_thing(type,depth+1)
+                print "\t"*(depth+1)+ "Named"
+                print "\t"*(depth+1)+ name 
             else:
-                type,name,expression = declaration
-                print "\t"*depth+ type,name, "= ("
+                type,name,length,expression = declaration
+                print_thing(type,depth+1)
+                print "\t"*depth+ name, "= ("
                 print_thing(expression,depth+1)
                 print "\t"*depth+ ")"
     elif name == "Expression":

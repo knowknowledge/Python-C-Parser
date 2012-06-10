@@ -36,7 +36,19 @@ int main()
     // Complex Types
     ((foobar)r).c; // Cast and SubStruct access
     */
+    ((10));
     d[10].c; // SubStruct of Array value
+    int x[10];
+    const int ten[10];
+    const int *pten[10];
+    // char (*(*x())[5])()
+    // int (*(*foo)(void ))[3]
+    // (int (*)(char *x, int y))x
+    // (int (*)(char *, int , float ))x
+    // const int (* volatile bar)[64]
+    // int *x(int )
+    // declare bar as volatile pointer to array 64 of const int
+    // const int (* volatile bar)[64]
 
     return 0;
 }

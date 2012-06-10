@@ -18,7 +18,7 @@ int bar( int a,int b )
 int main() {
     int i;
     struct {
-        int foo;
+        int* foo[4];
         int bar;
         union {
             int baz;
