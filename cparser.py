@@ -23,6 +23,7 @@ relation_operations = ["<","<=",">",">="] # Left-to-Right
 equality_operations = ["==","!="] # Left-to-Right
 bitwise_operations = ["&", "^", "|"] # Left-to-Right
 logical_operations = ["&&","||"]
+ternary_operations = ["?",":"]
 # Ternary () ? () : ()
 assignment_operations = ["=", # Right-to-Left
                         "+=","-=",
@@ -39,7 +40,7 @@ binary_operations = multiplication_operations + \
                     logical_operations  + \
                     assignment_operations + selection_operations
 
-operators = prefix_operations +  binary_operations
+operators = prefix_operations +  binary_operations + ternary_operations
 precedence = [
     selection_operations,
     multiplication_operations,
@@ -49,6 +50,7 @@ precedence = [
     equality_operations,
     ["&"],["^"],["|"],
     logical_operations,
+    ternary_operations,
     assignment_operations,
     ]
 
@@ -453,26 +455,7 @@ def parse_expression( tokens ):
         #TODO: Add Ternary Operator "?:"
         #TODO: Add Comma
         #TODO: Symbol Symbol should be illegal
-        if tokens[0] == "(":
-            # Is this an inner expression or a cast?
-            if tokens[1] in types+modifiers:
-                inner,tokens = parse_cast( tokens )
-                expression.append( inner )
-            else:
-                tokens.pop(0)
-                inner,tokens = parse_expression( tokens )
-                expression.append( inner )
-                if tokens[0] != ")":
-                    for e in expression:
-                        print e
-                    print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
-                    assert(0)
-                tokens.pop(0)
-                #break
-            if tokens[0] in binary_operations:
-                symbol = tokens.pop(0)
-                expression.append( ("Math", (symbol) ) )
-        elif tokens[0] == ";":
+        if tokens[0] == ";":
             break
         elif tokens[0] == ",":
             break
@@ -480,15 +463,27 @@ def parse_expression( tokens ):
             break
         elif tokens[0] == "]":
             break
-        elif tokens[0] in binary_operations:
-            symbol = tokens.pop(0)
-            expression.append( ("Math", (symbol) ) )
-        # Get the next value
+        # Get a value
         else:
-            value,tokens = parse_value( tokens )
-            expression.append( value )
+            if tokens[0] == "(":
+                # Is this an inner expression or a cast?
+                if tokens[1] in types+modifiers:
+                    inner,tokens = parse_cast( tokens )
+                else:
+                    tokens.pop(0)
+                    inner,tokens = parse_expression( tokens )
+                    if tokens[0] != ")":
+                        for e in expression:
+                            print e
+                        print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
+                        assert(0)
+                    tokens.pop(0)
+                    #break
+            else:
+                inner,tokens = parse_value( tokens )
+            expression.append( inner )
             # TODO: Add Right/Left Associations
-            if tokens[0] in binary_operations:
+            if tokens[0] in binary_operations + ternary_operations:
                 symbol = tokens.pop(0)
                 expression.append( ("Math", (symbol) ) )
             else:
@@ -501,8 +496,16 @@ def parse_expression( tokens ):
             # Value Math Value Math Value
             symbols = [ sym[1] for sym in expression[1::2] ]
             for ops in precedence:
-                if intersection( symbols, ops):
-                    #print "Precedence Level",ops
+                if "?" in ops and "?" in symbols:
+                
+                    i = (2 * symbols.index("?")) + 1
+                    j = (2 * symbols.index(":")) + 1
+                    before,after = expression[:i-1],expression[j+2:]
+                    test,yes,no = expression[i-1],expression[i+1],expression[j+1]
+                    math = ("Ternary",(test,yes,no))
+                    #print math
+                    expression = before + [math] + after
+                elif intersection( symbols, ops):
                     i = (2 * first_instance( symbols, ops )) + 1
                     symbol = expression[i][1]
                     before,after = expression[:i-1],expression[i+2:]
@@ -511,6 +514,9 @@ def parse_expression( tokens ):
                     #print math
                     expression = before + [math] + after
                     break
+                else:
+                    # Nothing to see here, move along
+                    pass
     elif len(expression) == 2:
         if expression[0][0] == "Math" and expression[0][1] in prefix_operations:
             return ("Prefix",(expression[0][1],expression[1])),tokens
@@ -961,7 +967,7 @@ def print_thing( thing, depth=0 ):
         print_thing(block,depth+1)
         p("}")
     else:
-        p("Warning!  Unknown type '", name,"'")
+        p("Warning!  Unknown type '"+ str(name) +"'")
         p(str(name))
         p(str(value))
 
@@ -1006,6 +1012,13 @@ def print_c( thing, depth, comments ):
         p(symbol)
         print_c(right,depth+1,comments)
         p(")")
+    elif name == "Ternary":
+        test,yes,no = value
+        print_c(test,depth+1,comments)
+        p("?")
+        print_c(yes,depth+1,comments)
+        p(":")
+        print_c(no,depth+1,comments)
     elif name == "String":
         p('"%s"'%value)
     elif name == "Value":
@@ -1162,7 +1175,7 @@ def print_c( thing, depth, comments ):
         print_c(block,depth+1,comments)
         p("}")
     else:
-        p("Warning!  Unknown type '", name,"'")
+        p("Warning!  Unknown type '"+ str(name) +"'")
         p(str(name))
         p(str(value))
 
@@ -1204,7 +1217,7 @@ if __name__ == "__main__":
     if output_to_files:
         if not os.path.exists( dirname ):
             os.mkdir( dirname )
-    real_out = sys.stdout
+    real_out = astfile = cfile = sys.stdout
 
     # Do the stuff
     for filename in files:

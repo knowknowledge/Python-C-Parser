@@ -1,11 +1,9 @@
 These features have not yet been implemented.
 ------------------------------------------------------------------------
  1	do-while
- 2	Modifiers (const, volatile, extern, ...)
- 3	enum
- 4	typedef
- 5	Arrays
- 6	Complex Types (function pointers)
- 7	ternary operations ( foo ? bar : baz )
- 8	sizeof
- 9  implicit function return types
+ 2	enum
+ 3	typedef
+ 4	Arrays
+ 5	Complex Types (function pointers) 
+ 6	sizeof
+ 7	implicit function return types

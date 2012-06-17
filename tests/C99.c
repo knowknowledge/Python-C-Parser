@@ -19,7 +19,9 @@ double compute_fn(double z)
         double r;  // [4]
  
         r = 7.0 - 3.0 / (z - 2.0 - 1.0/(z - 7.0 + 10.0/(z - 2.0 - 2.0/(z - 3.0)))); // [5]
- 
+        
+        // int x = r > 3 ? 10 : -10;
+
         feclearexcept(FE_DIVBYZERO); // [6]
  
         bool raised = fetestexcept(FE_OVERFLOW); // [7]
