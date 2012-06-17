@@ -69,6 +69,11 @@ int main() {
     if( foobar ) bax += test;
     else if ( baz )
         bax -= test;
+        else {
+            bax *= test;
+        }
+    forever:
+    for(;;); // Forever loop
     if( 3+2+1 ) {
         baz = 5+4/3*2-1;
         zab = 100;

@@ -6,8 +6,8 @@ types = ["short", "int", "long", "float", "double", "char", "void", "bool", "FIL
 containers = ["enum", "struct", "union", "typedef"]
 modifiers = [ "const", "volatile", "extern", "static", "register", "signed", "unsigned"]
 flow = [ "if", "else",
-         "goto", 
-         "case", "default", 
+         "goto",
+         "case", "default",
          "continue", "break", ]
 loops = ["for", "do", "while" "switch", ]
 keywords = types + containers + modifiers + flow + loops + [ "return", "sizeof" ]
@@ -423,7 +423,6 @@ def parse_cast( tokens ):
     tokens.pop(0)
     # Get the Cast Type
     cast_type,tokens = parse_type(tokens)
-    print "Being cast as", type
     if tokens[0] != ")":
         for e in expression:
             print e

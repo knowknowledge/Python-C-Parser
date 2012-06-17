@@ -8,3 +8,4 @@ These features have not yet been implemented.
  6	Complex Types (function pointers)
  7	ternary operations ( foo ? bar : baz )
  8	sizeof
+ 9  implicit function return types

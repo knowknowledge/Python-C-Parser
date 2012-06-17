@@ -10,7 +10,7 @@ typedef enum {
 struct {
     int foo;
     short bar;
-    long long baz;
+    long baz;
 } foobarbaz;
 struct foobarbaz bazInstance;
 */
@@ -22,6 +22,8 @@ union {
 } ptrStruct;
 */
 
+char foobar();
+
 int main()
 {
     a.b; // SubStruct access
@@ -31,18 +33,17 @@ int main()
     &d; // Address Of
     *d; // Value at
     d[10]; // Array Index
-    /*
+    
     (int)r; // Cast
     // Complex Types
-    ((foobar)r).c; // Cast and SubStruct access
-    */
+    //((foobar)r).c; // Cast and SubStruct access
     ((10));
     d[10].c; // SubStruct of Array value
     int x[10] = (int)y;
     const int ten[10];
     const int *pten[10];
     char y = (unsigned char*)(x);
-    // char (*(*x())[5])()
+    //char (*(*x())[5])();
     // int (*(*foo)(void ))[3]
     // (int (*)(char *x, int y))x
     // (int (*)(char *, int , float ))x
