@@ -254,22 +254,22 @@ def parse_value(tokens):
         value,tokens = parse_value( tokens )
         inner = ('Prefix',(unary,value))
     elif is_keyword(tokens[0]):
-        print "Parse Error at Line %d / Char %d - Value Expected at '%s', found keyword" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Value Expected at '%s', found keyword" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     elif tokens[0] in string.punctuation:
-        print "Parse Error at Line %d / Char %d - Value Expected at '%s', found punctuation" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Value Expected at '%s', found punctuation" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     elif tokens[1] == "(":
         inner,tokens = parse_call( tokens )
     elif tokens[1] == "[":
         name = tokens.pop(0)
         if tokens[0]!="[":
-            print "Parse Error at Line %d / Char %d - Array Accessor must have '[', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - Array Accessor must have '[', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
         index,tokens = parse_expression( tokens )
         if tokens[0]!="]":
-            print "Parse Error at Line %d / Char %d - Array Accessor must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - Array Accessor must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
         inner = ('Index',(name, index) )
@@ -288,7 +288,7 @@ def parse_value(tokens):
 def parse_call(tokens ):
     name = tokens.pop(0)
     if tokens[0]!="(":
-        print "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     # Get the Arguements
@@ -305,7 +305,7 @@ def parse_call(tokens ):
             tokens.pop(0)
     
     if tokens[0]!=")":
-        print "Parse Error at Line %d / Char %d - Function must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Function must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
@@ -313,19 +313,19 @@ def parse_call(tokens ):
 
 def parse_if( tokens ):
     if tokens[0] not in ["if"]:
-        print "Parse Error at Line %d / Char %d - if must start with 'if', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - if must start with 'if', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     if tokens[0]!="(":
-        print "Parse Error at Line %d / Char %d - if must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - if must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     test,tokens = parse_expression( tokens )
     
     if tokens[0]!=")":
-        print "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
@@ -341,19 +341,19 @@ def parse_if( tokens ):
 
 def parse_while( tokens ):
     if tokens[0] not in ["while"]:
-        print "Parse Error at Line %d / Char %d - while must start with 'while', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - while must start with 'while', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     if tokens[0]!="(":
-        print "Parse Error at Line %d / Char %d - while must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - while must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     test,tokens = parse_expression( tokens )
     
     if tokens[0]!=")":
-        print "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
@@ -364,31 +364,31 @@ def parse_while( tokens ):
 
 def parse_for( tokens ):
     if tokens[0] not in ["for"]:
-        print "Parse Error at Line %d / Char %d - for must start with 'for', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - for must start with 'for', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     if tokens[0]!="(":
-        print "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     init,tokens = parse_expression( tokens )
     
     if tokens[0]!=";":
-        print "Parse Error at Line %d / Char %d - for must have first ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - for must have first ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     test,tokens = parse_expression( tokens )
     
     if tokens[0]!=";":
-        print "Parse Error at Line %d / Char %d - for must have second ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - for must have second ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     step,tokens = parse_expression( tokens )
     
     if tokens[0]!=")":
-        print "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - if must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
@@ -411,7 +411,7 @@ def parse_expression( tokens ):
             if tokens[0] != ")":
                 for e in expression:
                     print e
-                print "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
+                print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
                 assert(0)
             tokens.pop(0)
             break
@@ -456,18 +456,18 @@ def parse_expression( tokens ):
     elif len(expression) == 0:
         return ("Expression",[]),tokens
     else:
-        print "Parse Error at Line %d / Char %d - Couldn't compress expression into tree" % (tokens[0].line, tokens[0].pos)
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Couldn't compress expression into tree" % (tokens[0].line, tokens[0].pos)
         assert(0)
 
 
 def parse_struct( tokens ):
     struct = []
     if tokens[0] not in ["struct","union"]:
-        print "Parse Error at Line %d / Char %d - struct must start with 'struct' or 'union', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - struct must start with 'struct' or 'union', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     kind = "Struct" if (tokens.pop(0) == "struct") else "Union"
     if tokens[0]!="{":
-        print "Parse Error at Line %d / Char %d - Blocks must start with 'struct {', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Blocks must start with 'struct {', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     while len(tokens):
@@ -480,11 +480,11 @@ def parse_struct( tokens ):
             declaration,tokens = parse_declaration(tokens)
             struct.append(declaration)
         if tokens[0]!=";":
-            print "Parse Error at Line %d / Char %d - struct values must end in ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - struct values must end in ';', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
         tokens.pop(0)
     if tokens[0]!="}":
-        print "Parse Error at Line %d / Char %d - Blocks must start with 'struct {', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Blocks must start with 'struct {', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
@@ -493,19 +493,19 @@ def parse_struct( tokens ):
 
 def parse_switch(tokens):
     if tokens[0] not in ["switch"]:
-        print "Parse Error at Line %d / Char %d - switch must start with 'switch', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - switch must start with 'switch', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     if tokens[0]!="(":
-        print "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - for must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     test,tokens = parse_expression( tokens )
     
     if tokens[0]!=")":
-        print "Parse Error at Line %d / Char %d - functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
 
@@ -518,7 +518,7 @@ def parse_type(tokens):
     while tokens[0] in modifiers:
         mods.append( tokens.pop(0) )
     if not ( tokens[0] in types ):
-        print "Parse Error at Line %d / Char %d - expected type but found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - expected type but found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert( tokens[0] in types )
     type = tokens.pop(0)
     isPointer = False
@@ -540,7 +540,7 @@ def parse_declaration( tokens ):
             tokens.pop(0)
             length,tokens = parse_expression( tokens )
             if tokens[0]!="]":
-                print "Parse Error at Line %d / Char %d - Array Definition must end with ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+                print >>sys.stderr, "Parse Error at Line %d / Char %d - Array Definition must end with ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
                 assert(0)
             tokens.pop(0)
         if not is_keyword(name):
@@ -558,7 +558,7 @@ def parse_declaration( tokens ):
         elif tokens[0]==";":
             break
         if len(tokens):
-            print "Parse Error at Line %d / Char %d - unknown token encountered at '%s'" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - unknown token encountered at '%s'" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
     return ("Declaration", assignments), tokens
 
@@ -567,7 +567,7 @@ def parse_function( tokens ):
     name = tokens.pop(0)
     
     if tokens[0]!="(":
-        print "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
@@ -582,7 +582,7 @@ def parse_function( tokens ):
             break
         argname = tokens.pop(0)
         if is_keyword(name):
-            print "Parse Error at Line %d / Char %d - Function argument #%d's name '%s' cannot be a keyword" % (len(arguments)+1, name)
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - Function argument #%d's name '%s' cannot be a keyword" % (len(arguments)+1, name)
             assert(0)
         arguments.append( (type,argname) )
         if tokens[0]!=",":
@@ -591,12 +591,12 @@ def parse_function( tokens ):
             tokens.pop(0)
     
     if tokens[0]!=")":
-        print "Parse Error at Line %d / Char %d - Functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Functions arguments must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     
     if tokens[0]!="{":
-        print "Parse Error at Line %d / Char %d - Functions must have '{', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Functions must have '{', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     block,tokens = parse_block( tokens );
     #print "Function",returntype,name,arguments,block
@@ -635,7 +635,7 @@ def parse_statement( tokens ):
         literal,tokens = parse_value(tokens)
         statement = ("Case",literal)
         if tokens[0]!=":":
-            print "Parse Error at Line %d / Char %d - case must end in a colon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - case must end in a colon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(tokens[0] == ":")
         tokens.pop(0)
         needsemicolon = False
@@ -643,7 +643,7 @@ def parse_statement( tokens ):
         tokens.pop(0)
         statement = ("default",None)
         if tokens[0]!=":":
-            print "Parse Error at Line %d / Char %d - default must end in a colon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - default must end in a colon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(tokens[0] == ":")
         tokens.pop(0)
         needsemicolon = False
@@ -667,14 +667,14 @@ def parse_statement( tokens ):
         if tokens[0]==";":
             tokens.pop(0)
         else:
-            print "Parse Error at Line %d / Char %d - Statements must end in a semicolon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-            assert(tokens[0]!=";")
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - Statements must end in a semicolon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            assert(tokens[0]==";")
     #print "Statement",statement,"\n"
     return statement, tokens
 
 def parse_block( tokens ):
     if tokens[0]!="{":
-        print "Parse Error at Line %d / Char %d - Blocks must start with a {, found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Blocks must start with a {, found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     block = []
@@ -682,7 +682,7 @@ def parse_block( tokens ):
         statement,tokens = parse_statement_or_block(tokens)
         block.append( statement )
     if tokens[0]!="}":
-        print "Parse Error at Line %d / Char %d - Blocks must end with a }, found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - Blocks must end with a }, found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
     tokens.pop(0)
     #print "Block", block
