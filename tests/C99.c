@@ -4,6 +4,8 @@
 #include <fenv.h>
 #include <tgmath.h>
 #include <stdbool.h>
+
+int error;
  
 double compute_fn(double z)
 {

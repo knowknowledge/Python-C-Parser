@@ -75,6 +75,15 @@ def first_instance(haystack, needles ):
             return i
     raise ValueError("%s does not contain one of %s"%(str(haystack),str(needles)))
 
+def len_type(tokens):
+    index = 0
+    while tokens[index] in modifiers:
+        index += 1 # The modifier
+    index += 1 # the type
+    if tokens[index] == "*":
+        index += 1 # the pointer
+    return index
+
 # Token Lexer
 # ------------------------------------------------------------------------
 class Token(str):
@@ -640,11 +649,14 @@ def parse_function( tokens ):
         assert(0)
     tokens.pop(0)
     
-    if tokens[0]!="{":
+    if tokens[0]=="{":
+        block,tokens = parse_block( tokens );
+    elif tokens[0]==";":
+        tokens.pop(0)
+        block = None
+    else:
         print >>sys.stderr, "Parse Error at Line %d / Char %d - Functions must have '{', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
-    block,tokens = parse_block( tokens );
-    #print "Function",returntype,name,arguments,block
     return ("Function",(returntype,name,arguments,block)), tokens
 
 def parse_statement( tokens ):
@@ -659,10 +671,7 @@ def parse_statement( tokens ):
     elif tokens[0] == "for":
         statement,tokens = parse_for( tokens )
         needsemicolon = False
-    elif tokens[0] in types and tokens[2] == "(":
-        statement,tokens = parse_function( tokens )
-        needsemicolon = False
-    elif tokens[0] in types or tokens[0] in modifiers:
+    elif tokens[0] in types + modifiers:
         statement,tokens = parse_declaration( tokens )
     elif tokens[0]=="struct" or tokens[0]=="union":
         statement,tokens = parse_struct(tokens)
@@ -707,9 +716,10 @@ def parse_statement( tokens ):
         expression,tokens = parse_expression( tokens );
         statement = ("Return",expression)
     else:
-        statement,tokens = parse_expression(tokens)
+        expression,tokens = parse_expression(tokens)
+        statement = ("Statement",expression)
     if needsemicolon:
-        if tokens[0]==";":
+        if tokens[0]==";" or tokens[0]==",":
             tokens.pop(0)
         else:
             print >>sys.stderr, "Parse Error at Line %d / Char %d - Statements must end in a semicolon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
@@ -738,6 +748,18 @@ def parse_statement_or_block( tokens ):
         return parse_block( tokens )
     else:
         return parse_statement( tokens )
+
+def parse_root( tokens ):
+    if tokens[ len_type(tokens) + 1 ] == "(":
+        return parse_function( tokens )
+    else:
+        declaration = parse_declaration( tokens )
+        if tokens[0]==";":
+            tokens.pop(0)
+        else:
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - Non-Function Declarations must end in a semicolon: found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+            assert(tokens[0]==";")
+        return declaration
 
 # Print Abstract Syntax Tree (AST)
 # ------------------------------------------------------------------------
@@ -943,6 +965,6 @@ if __name__ == "__main__":
         print
         print "Structural Analysis:"
         while len(tokens):
-            block, tokens = parse_statement_or_block( tokens )
+            block, tokens = parse_root( tokens )
             print_thing(block)
         print
