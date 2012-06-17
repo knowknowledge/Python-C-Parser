@@ -273,7 +273,15 @@ def tokenize( s ):
 def parse_value(tokens):
     if tokens[0] in prefix_operations:
         unary = tokens.pop(0)
-        value,tokens = parse_value( tokens )
+        if tokens[0] == "(":
+            tokens.pop(0)
+            value,tokens = parse_expression( tokens )
+            if tokens[0]!=")":
+                print >>sys.stderr, "Parse Error at Line %d / Char %d - ( arguments must end with ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+                assert(0)
+            tokens.pop(0)
+        else:
+            value,tokens = parse_value( tokens )
         inner = ('Prefix',(unary,value))
     elif is_keyword(tokens[0]):
         print >>sys.stderr, "Parse Error at Line %d / Char %d - Value Expected at '%s', found keyword" % (tokens[0].line, tokens[0].pos, tokens[0])
@@ -281,20 +289,6 @@ def parse_value(tokens):
     elif tokens[0] in string.punctuation:
         print >>sys.stderr, "Parse Error at Line %d / Char %d - Value Expected at '%s', found punctuation" % (tokens[0].line, tokens[0].pos, tokens[0])
         assert(0)
-    elif tokens[1] == "(":
-        inner,tokens = parse_call( tokens )
-    elif tokens[1] == "[":
-        name = tokens.pop(0)
-        if tokens[0]!="[":
-            print >>sys.stderr, "Parse Error at Line %d / Char %d - Array Accessor must have '[', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-            assert(0)
-        tokens.pop(0)
-        index,tokens = parse_expression( tokens )
-        if tokens[0]!="]":
-            print >>sys.stderr, "Parse Error at Line %d / Char %d - Array Accessor must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-            assert(0)
-        tokens.pop(0)
-        inner = ('Index',(name, index) )
     elif tokens[0][0] == '"':
         name = tokens.pop(0)
         str = name[1:-1]
@@ -303,38 +297,43 @@ def parse_value(tokens):
         name = tokens.pop(0)
         inner = ('Value',name)
         #print "Value",name
+    while len(tokens) and tokens[0] in "([":
+        if tokens[0] == "(":
+            tokens.pop(0)
+            # Get the Arguements
+            arguments = []
+            while len(tokens):
+                # Reached end of Argument List
+                if tokens[0]==")":
+                    break
+                arg,tokens = parse_expression( tokens )
+                arguments.append( arg )
+                if tokens[0]!=",":
+                    break
+                else:
+                    tokens.pop(0)
+            if tokens[0]!=")":
+                print >>sys.stderr, "Parse Error at Line %d / Char %d - Function must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+                assert(0)
+            tokens.pop(0)
+            inner = ('Call',(inner,arguments))
+        elif tokens[0] == "[":
+            tokens.pop(0)
+            index,tokens = parse_expression( tokens )
+            if tokens[0]!="]":
+                print >>sys.stderr, "Parse Error at Line %d / Char %d - Array Accessor must have ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+                assert(0)
+            tokens.pop(0)
+            inner = ('Index',(inner, index) )
+        else:
+            #So how did you get here?
+            assert(0)
     # Check for postfix unaray operations
     if tokens[0] in postfix_operations:
         unary = tokens.pop(0)
         #print "Value",unary,name
         inner = ('Postfix',(inner,unary))
     return inner,tokens
-
-def parse_call(tokens ):
-    name = tokens.pop(0)
-    if tokens[0]!="(":
-        print >>sys.stderr, "Parse Error at Line %d / Char %d - Function must have '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-        assert(0)
-    tokens.pop(0)
-    # Get the Arguements
-    arguments = []
-    while len(tokens):
-        # Reached end of Argument List
-        if tokens[0]==")":
-            break
-        arg,tokens = parse_expression( tokens )
-        arguments.append( arg )
-        if tokens[0]!=",":
-            break
-        else:
-            tokens.pop(0)
-    
-    if tokens[0]!=")":
-        print >>sys.stderr, "Parse Error at Line %d / Char %d - Function must have ')', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
-        assert(0)
-    tokens.pop(0)
-    
-    return ('Call',(name,arguments)),tokens
 
 def parse_if( tokens ):
     if tokens[0] not in ["if"]:
@@ -606,7 +605,7 @@ def parse_declaration( tokens ):
     type, tokens = parse_type( tokens )
     while len(tokens):
         if tokens[0] == "*":
-            type = ("Type", (type[0][0], type[0][1], True))
+            type = ("Type", (type[1][0], type[1][1], True))
             tokens.pop(0)
         # Check if it's a pointer
         name = tokens.pop(0)
@@ -619,6 +618,10 @@ def parse_declaration( tokens ):
                 print >>sys.stderr, "Parse Error at Line %d / Char %d - Array Definition must end with ']', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
                 assert(0)
             tokens.pop(0)
+        if tokens[0]=="[":
+            # Get Multi Dimensional Arrays
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - Multi Dimensional Arrays don't work yet" %(tokens[0].line, tokens[0].pos)
+            assert(0)
         if not is_keyword(name):
             if tokens[0]=="=":
                 # Declaration value
@@ -630,13 +633,13 @@ def parse_declaration( tokens ):
                 assignments.append((type,name,length,None))
         if tokens[0]==",":
             tokens.pop(0)
+            type = ("Type", (type[1][0], type[1][1], False))
             continue
         elif tokens[0]==";":
             break
         if len(tokens):
             print >>sys.stderr, "Parse Error at Line %d / Char %d - unknown token encountered at '%s'" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
-        type = ("Type", (type[0][0], type[0][1], False))
     return ("Declaration", assignments), tokens
 
 def parse_function( tokens ):
@@ -842,8 +845,8 @@ def print_thing( thing, depth=0 ):
         p(value)
     elif name == "Index":
         p("Index")
-        name, expression = value
-        p(name)
+        var, expression = value
+        print_thing(var,depth+1)
         p("[")
         print_thing(expression,depth+1)
         p("]")
@@ -949,8 +952,7 @@ def print_thing( thing, depth=0 ):
             p("}")
     elif name=="Call":
         func,arguments = value
-        p(name)
-        p(func)
+        print_thing(func,depth+1)
         p("(")
         for num,arg in enumerate(arguments):
             print_thing(arg,depth+1)
@@ -1025,7 +1027,7 @@ def print_c( thing, depth, comments ):
         p(value)
     elif name == "Index":
         var, expression = value
-        p(var)
+        print_c(var,depth+1,comments)
         p("[")
         print_c(expression,depth+1,comments)
         p("]")
@@ -1158,7 +1160,7 @@ def print_c( thing, depth, comments ):
             p(";")
     elif name=="Call":
         func,arguments = value
-        p(func)
+        print_c(func,depth+1,comments)
         p("(")
         for num,arg in enumerate(arguments):
             print_c(arg,depth+1,comments)

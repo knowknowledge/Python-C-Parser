@@ -43,6 +43,7 @@ int main()
     const int ten[10];
     const int *pten[10];
     char y = (unsigned char*)(x);
+    funcpointers[10]( somearg, anotherarg);
     //char (*(*x())[5])();
     // int (*(*foo)(void ))[3]
     // (int (*)(char *x, int y))x

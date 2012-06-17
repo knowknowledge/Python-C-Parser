@@ -37,6 +37,8 @@ int main() {
         (x >  10) ? BIG_POSITIVE :
                         POSITIVE ;
 
+    (n<3||!(m[2][0]-'-'||m[2][1]));
+
     return total;
 }
 
