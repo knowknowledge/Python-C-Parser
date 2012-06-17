@@ -292,6 +292,9 @@ def parse_value(tokens):
     elif tokens[0][0] == '"':
         name = tokens.pop(0)
         str = name[1:-1]
+        while len(tokens) and tokens[0] and tokens[0][0] == '"':
+            name = tokens.pop(0)
+            str += name[1:-1]
         inner = ('String',str)
     else:
         name = tokens.pop(0)
