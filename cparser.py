@@ -2,7 +2,7 @@ import string
 
 # C Keywords
 # ------------------------------------------------------------------------
-types = ["short", "int", "long", "float", "double", "char", "void", "bool"]
+types = ["short", "int", "long", "float", "double", "char", "void", "bool", "FILE"]
 containers = ["enum", "struct", "union", "typedef"]
 modifiers = [ "const", "volatile", "extern", "static", "register", "signed", "unsigned"]
 flow = [ "if", "else",
@@ -96,6 +96,9 @@ def escape_character( c, line, pos ):
     if c == "n":
         curtoken = Token("\n")
         curtoken.set(line,pos)
+    elif c == "f":
+        curtoken = Token("\f") # Form Feed, whatever that is
+        curtoken.set(line,pos)
     elif c == "t":
         curtoken = Token("\t")
         curtoken.set(line,pos)
@@ -108,9 +111,14 @@ def escape_character( c, line, pos ):
     elif c == '\\':
         curtoken = Token("\\")
         curtoken.set(line,pos)
+    elif c == "0":
+        curtoken = Token("\0")
+        curtoken.set(line,pos)
     else:
         print "Lex Error at Line %d / Char %d - Character '%c' cannot be escaped" % (line, pos, c)
-        assert(0)
+        #assert(0)
+        curtoken = Token(c)
+        curtoken.set(line,pos)
     return curtoken
 
 
@@ -138,6 +146,7 @@ def tokenize( s ):
                     in_comment = False
                     in_pragma = False
                 line += 1
+                pos = 0
             elif c=='/' and curtoken.endswith("*"):
                 curtoken = Token("")
                 curtoken.set(line,pos)
