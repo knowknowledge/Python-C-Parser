@@ -183,15 +183,17 @@ def tokenize( s ):
         elif in_string:
             if curtoken.endswith('\\'):
                 # Char Symbols
-                curtoken = curtoken.trim()
-                curtoken += escape_character( c, line, pos )
+                #curtoken = curtoken.trim()
+                #curtoken += escape_character( c, line, pos )
+                curtoken += Token(c)
             else:
                 curtoken += Token(c)
         elif in_char:
             if curtoken.endswith("\\"):
                 # Escape this Character
-                curtoken = curtoken.trim()
-                curtoken += escape_character(c, line, pos)
+                #curtoken = curtoken.trim()
+                #curtoken += escape_character(c, line, pos)
+                curtoken += c
             elif c == "'":
                 # End of Character:
                 curtoken += c
@@ -291,6 +293,10 @@ def parse_value(tokens):
             assert(0)
         tokens.pop(0)
         inner = ('Index',(name, index) )
+    elif tokens[0][0] == '"':
+        name = tokens.pop(0)
+        str = name[1:-1]
+        inner = ('String',str)
     else:
         name = tokens.pop(0)
         inner = ('Value',name)
@@ -301,7 +307,6 @@ def parse_value(tokens):
         #print "Value",unary,name
         inner = ('Postfix',(inner,unary))
     return inner,tokens
-    
 
 def parse_call(tokens ):
     name = tokens.pop(0)
@@ -440,7 +445,6 @@ def parse_cast( tokens ):
     else:
         cast_value,tokens = parse_value( tokens )
     return ("Cast",(cast_type,cast_value)), tokens
-    
 
 def parse_expression( tokens ):
     # This should be a tree not a list
@@ -629,7 +633,6 @@ def parse_function( tokens ):
         if tokens[0]==")":
             break
         if tokens[0]== "void" and tokens[1]==")":
-            print "void"
             tokens.pop(0)
             break
         type,tokens = parse_type(tokens)
@@ -808,6 +811,9 @@ def print_thing( thing, depth=0 ):
         p(symbol)
         print_thing(right,depth+1)
         p(")")
+    elif name == "String":
+        p("String")
+        p('"%s"'%value)
     elif name == "Value":
         p("Value")
         p(value)
@@ -981,6 +987,8 @@ def print_c( thing, depth=0 ):
         p(symbol)
         print_c(right,depth+1)
         p(")")
+    elif name == "String":
+        p('"%s"'%value)
     elif name == "Value":
         p(value)
     elif name == "Index":
