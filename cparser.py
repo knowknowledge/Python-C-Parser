@@ -602,7 +602,7 @@ def parse_declaration( tokens ):
                 assignments.append((type,name,length,expression))
             else:
                 # Non-Assignmed value
-                assignments.append((type,name,length))
+                assignments.append((type,name,length,None))
         if tokens[0]==",":
             tokens.pop(0)
             continue
@@ -773,13 +773,11 @@ def print_thing( thing, depth=0 ):
     #print "\t"*depth+ "THING:", name,value
     if name == "Block":
         print "\t"*depth+ "Block"
-        print "\t"*depth+ "{"
-        for statement in value:
+        for num,statement in enumerate(value):
+            print "\t"*(depth)+ "Statement %d" %(num+1)
             print_thing(statement,depth+1)
-        print "\t"*depth+ "}"
     elif name == "Statement":
-        print "\t"*depth+ "Statement"
-        pass
+        print_thing(value,depth)
     elif name == "Math":
         symbol = value
         print "\t"*depth+ "Math"
@@ -830,21 +828,16 @@ def print_thing( thing, depth=0 ):
     elif name == "Declaration":
         print "\t"*depth+ name
         for declaration in value:
-            if len(declaration) == 3:
-                type,name,length = declaration
-                if length:
-                    print "\t"*(depth+1)+ "Array of length"
-                    print_thing(length,depth+2)
-                print_thing(type,depth+1)
-                print "\t"*(depth+1)+ "Name"
-                print "\t"*(depth+2)+ name 
-            else:
-                type,name,length,expression = declaration
-                print_thing(type,depth+1)
-                print "\t"*(depth+1)+ "Name"
-                print "\t"*(depth+2)+ name 
+            type,name,length,assignment = declaration
+            if length:
+                print "\t"*(depth+1)+ "Array of length"
+                print_thing(length,depth+2)
+            print_thing(type,depth+1)
+            print "\t"*(depth+1)+ "Name"
+            print "\t"*(depth+2)+ name
+            if assignment:
                 print "\t"*(depth+1)+ "Assigned the value"
-                print_thing(expression,depth+2)
+                print_thing(assignment,depth+2)
     elif name == "Expression":
         print "\t"*depth+ name
         print "\t"*depth+ "("
@@ -860,40 +853,31 @@ def print_thing( thing, depth=0 ):
     elif name=="If":
         test,action,alternative = value
         print "\t"*depth+ name
-        print "\t"*depth+ "("
-        print_thing(test,depth+1)
-        print "\t"*depth+ ")"
-        print "\t"*depth+ "{"
-        print_thing(action,depth+1)
-        print "\t"*depth+ "}"
+        print "\t"*(depth+1)+ "TEST"
+        print_thing(test,depth+2)
+        print "\t"*(depth+1)+ "DO"
+        print_thing(action,depth+2)
         if alternative:
-            print "\t"*depth+ "else"
-            print "\t"*depth+ "{"
-            print_thing(alternative,depth+1)
-            print "\t"*depth+ "}"
+            print "\t"*(depth+1)+ "ELSE"
+            print_thing(alternative,depth+2)
     elif name=="While":
         test,action = value
         print "\t"*depth+ name
-        print "\t"*depth+ "("
-        print_thing(test,depth+1)
-        print "\t"*depth+ ")"
-        print "\t"*depth+ "{"
-        print_thing(action,depth+1)
-        print "\t"*depth+ "}"
+        print "\t"*(depth+1)+ "TEST"
+        print_thing(test,depth+2)
+        print "\t"*(depth+1)+ "DO"
+        print_thing(action,depth+2)
     elif name=="For":
         init,test,step,action = value
         print "\t"*depth+ name
-        print "\t"*depth+ "("
-        print "\t"*depth+ "INIT"
-        print_thing(init,depth+1)
-        print "\t"*depth+ "TEST"
-        print_thing(test,depth+1)
-        print "\t"*depth+ "STEP"
-        print_thing(step,depth+1)
-        print "\t"*depth+ ")"
-        print "\t"*depth+ "{"
-        print_thing(action,depth+1)
-        print "\t"*depth+ "}"
+        print "\t"*(depth+1)+ "INIT"
+        print_thing(init,(depth+1)+1)
+        print "\t"*(depth+1)+ "TEST"
+        print_thing(test,(depth+1)+1)
+        print "\t"*(depth+1)+ "STEP"
+        print_thing(step,(depth+1)+1)
+        print "\t"*(depth+1)+ "DO"
+        print_thing(action,depth+2)
     elif name=="Break":
         print "\t"*depth+ name
     elif name=="Continue":
@@ -914,14 +898,25 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ name
     elif name=="Function":
         returntype,name,arguments,block = value
-        print "\t"*depth+ returntype + " " + name
-        print "\t"*depth+ "("
-        for argtype,argname in arguments:
-            print "\t"*(depth+1)+ argtype,argname
-        print "\t"*depth+ ")"
-        print "\t"*depth+ "{"
-        print_thing(block,depth+1)
-        print "\t"*depth+ "}"
+        if block:
+            print "\t"*depth+ "Function Declaration"
+        else:
+            print "\t"*depth+ "Function Header"
+        print_thing(returntype,depth+1)
+        print "\t"*(depth+1)+ name
+        if len(arguments):
+            print "\t"*depth+ "With %d Argument%s" %(len(arguments), "s" if len(arguments) > 1 else "")
+            for num,(argtype,argname) in enumerate(arguments):
+                print "\t"*(depth+1)+ "Argument %d:" %(num+1)
+                print_thing(argtype,depth+2)
+                print "\t"*(depth+2)+ "Name"
+                print "\t"*(depth+3)+ argname
+        else:
+            print "\t"*depth+ "With No Arguments"
+        if block:
+            print "\t"*depth+ "{"
+            print_thing(block,depth+1)
+            print "\t"*depth+ "}"
     elif name=="Call":
         func,arguments = value
         print "\t"*depth+ name
@@ -944,15 +939,215 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ str(name)
         print "\t"*depth+ str(value)
 
+def print_c( thing, depth=0 ):
+    def comment(str):
+        #print "\t"*depth+ "\\\\ "+ str
+        pass
+    try:
+        name,value = thing
+    except ValueError:
+        print "Can't Unpack this variable:"
+        print thing
+        assert(0)
+    comment( "THING: %s %s" % (name,str(value)) )
+    comment( name )
+    if name == "Block":
+        print "\t"*depth+ "{"
+        for num,statement in enumerate(value):
+            comment( "Statement %d" %(num+1) )
+            print_c(statement,depth+1)
+        print "\t"*depth+ "}"
+    elif name == "Cast":
+        type,expression = value
+        print "\t"*depth+ "("
+        print_c(expression,depth+1)
+        print "\t"*depth+ ")"
+        print_c(type,depth+1)
+    elif name == "Prefix":
+        symbol, expression = value
+        print "\t"*depth+symbol
+        print_c(expression,depth+1)
+    elif name == "Postfix":
+        expression, symbol = value
+        print_c(expression,depth+1)
+        print "\t"*depth+symbol
+    elif name == "Binary":
+        symbol,left,right = value
+        print "\t"*depth+ "("
+        print_c(left,depth+1)
+        print "\t"*depth+ symbol
+        print_c(right,depth+1)
+        print "\t"*depth+ ")"
+    elif name == "Value":
+        print "\t"*depth+ value
+    elif name == "Index":
+        var, expression = value
+        print "\t"*depth+ var
+        print "\t"*depth+ "["
+        print_c(expression,depth+1)
+        print "\t"*depth+ "]"
+    elif name == "Type":
+        mods, type, isPointer = value
+        if len(mods):
+            type = " ".join(mods) + " " + type
+        if isPointer:
+            type += "*"
+        print "\t"*(depth)+ type
+    elif name == "Declaration":
+        for declaration in value:
+            type,name,length,assignment = declaration
+            print_c(type,depth+1)
+            print "\t"*(depth+1)+ name
+            if length:
+                print "\t"*(depth+1)+ "["
+                print_c(length,depth+2)
+                print "\t"*(depth+1)+ "]"
+            if assignment:
+                print "\t"*(depth+1)+ "="
+                print_c(assignment,depth+2)
+        print "\t"*depth+ ";"
+    elif name == "Expression":
+        print "\t"*depth+ "("
+        if value:
+            print_c(value,depth+1)
+        print "\t"*depth+ ")"
+    elif name=="Struct" or name=="Union":
+        if name == "Struct":
+            print "struct"
+        if name == "Union":
+            print "union"
+        print "\t"*depth+ "{"
+        for expression in value:
+            print_c(expression,depth+1)
+        print "\t"*depth+ "}"
+    elif name=="If":
+        test,action,alternative = value
+        print "\t"*depth+ "if("
+        comment( "TEST" )
+        print_c(test,depth+2)
+        print "\t"*depth+ ")"
+        comment( "DO" )
+        print "\t"*depth+ "{"
+        print_c(action,depth+2)
+        print "\t"*depth+ "}"
+        if alternative:
+            comment( "ELSE" )
+            print "\t"*(depth+1)+ "else {"
+            print_c(alternative,depth+2)
+            print "\t"*(depth+1)+ "}"
+    elif name=="While":
+        test,action = value
+        print "\t"*depth+ "while("
+        comment( "TEST" )
+        print_c(test,depth+2)
+        print "\t"*depth+ ")"
+        comment( "DO" )
+        print "\t"*(depth+1)+ "{"
+        print_c(action,depth+2)
+        print "\t"*(depth+1)+ "}"
+    elif name=="For":
+        init,test,step,action = value
+        print "\t"*depth+ "for("
+        comment( "INIT" )
+        print_c(init,(depth+1)+1)
+        print "\t"*depth+ ";"
+        comment( "TEST" )
+        print_c(test,(depth+1)+1)
+        print "\t"*depth+ ";"
+        comment( "STEP" )
+        print_c(step,(depth+1)+1)
+        comment( "DO" )
+        print "\t"*depth+ "{"
+        print_c(action,depth+2)
+        print "\t"*depth+ "}"
+    elif name=="Break":
+        print "\t"*depth+ "break;"
+    elif name=="Continue":
+        print "\t"*depth+ "continue;"
+    elif name=="Return":
+        print "\t"*depth+ "return"
+        print_c(value,depth+1)
+        print "\t"*depth+ ";"
+    elif name=="Case":
+        print "\t"*depth+ "case"
+        print_c(value,depth+1)
+        print "\t"*depth+ ":"
+    elif name=="Label":
+        print "\t"*(depth+1)+ value
+        print "\t"*depth+ ":"
+    elif name=="Goto":
+        print "\t"*(depth+1)+ value
+        print "\t"*depth+ ";"
+    elif name=="default":
+        print "\t"*depth+ "default:"
+    elif name=="Statement":
+        print_c(value,depth)
+        print "\t"*depth+ ";"
+    elif name=="Function":
+        returntype,name,arguments,block = value
+        if block:
+            comment( "Function Declaration" )
+            pass
+        else:
+            comment( "Function Header" )
+            pass
+        print_c(returntype,depth+1)
+        print "\t"*(depth+1)+ name
+        print "\t"*depth+ "("
+        if len(arguments):
+            comment( "With %d Argument%s" %(len(arguments), "s" if len(arguments) > 1 else "") )
+            for num,(argtype,argname) in enumerate(arguments):
+                comment( "Argument %d:" %(num+1) )
+                print_c(argtype,depth+2)
+                comment( "Name" )
+                print "\t"*(depth+3)+ argname
+                if num != len(arguments)-1:
+                    print "\t"*(depth+3)+ ","
+                    
+        else:
+            comment( "With No Arguments" )
+            print "\t"*depth+ "void"
+        print "\t"*depth+ ")"
+        if block:
+            print_c(block,depth+1)
+        else:
+            print "\t"*depth+ ";"
+    elif name=="Call":
+        func,arguments = value
+        print "\t"*depth+ func
+        print "\t"*depth+ "("
+        for arg in arguments:
+            print_c(arg,depth+1)
+        print "\t"*depth+ ")"
+    elif name=="Switch":
+        test,block = value
+        print "\t"*depth+ "switch"
+        print "\t"*depth+ "("
+        print_c(test,depth+1)
+        print "\t"*depth+ ")"
+        print "\t"*depth+ "{"
+        print_c(block,depth+1)
+        print "\t"*depth+ "}"
+    else:
+        print "\t"*depth+ "Warning!  Unknown type '", name,"'"
+        print "\t"*depth+ str(name)
+        print "\t"*depth+ str(value)
+
 if __name__ == "__main__":
+    import os
     import sys
     import glob
     files = []
     for arg in sys.argv[1:]:
         for filenames in glob.glob( arg ):
                 files.append( filenames )
+    output_to_files = False
+    if output_to_files:
+        if not os.path.exists( "results" ):
+            os.mkdir( "results" )
     for filename in files:
         print filename
+        dirpath,filebase = os.path.split(filename)
         data = open(filename,"r").read()
         tokens = list(tokenize( data ))
         # Print out the Lexer
@@ -964,7 +1159,16 @@ if __name__ == "__main__":
         # Parse tokens
         print
         print "Structural Analysis:"
+        if output_to_files:
+            temp_out = sys.stdout
+            outpath = os.path.join("results", "result_"+filebase)
+            outfile = open(outpath,"w")
+            sys.stdout = outfile
         while len(tokens):
             block, tokens = parse_root( tokens )
-            print_thing(block)
+            #print_thing(block)
+            print_c(block)
         print
+        if output_to_files:
+            sys.stdout = temp_out
+
