@@ -965,7 +965,7 @@ def print_thing( thing, depth=0 ):
         p(str(name))
         p(str(value))
 
-def print_c( thing, depth=0 ):
+def print_c( thing, depth, comments ):
     def comment(str):
         if comments:
             p("// "+ str)
@@ -983,28 +983,28 @@ def print_c( thing, depth=0 ):
         p("{")
         for num,statement in enumerate(value):
             comment( "Statement %d" %(num+1) )
-            print_c(statement,depth+1)
+            print_c(statement,depth+1,comments)
         p("}")
     elif name == "Cast":
         type,expression = value
         p("(")
-        print_c(expression,depth+1)
+        print_c(type,depth+1,comments)
         p(")")
-        print_c(type,depth+1)
+        print_c(expression,depth+1,comments)
     elif name == "Prefix":
         symbol, expression = value
         p(symbol)
-        print_c(expression,depth+1)
+        print_c(expression,depth+1,comments)
     elif name == "Postfix":
         expression, symbol = value
-        print_c(expression,depth+1)
+        print_c(expression,depth+1,comments)
         p(symbol)
     elif name == "Binary":
         symbol,left,right = value
         p("(")
-        print_c(left,depth+1)
+        print_c(left,depth+1,comments)
         p(symbol)
-        print_c(right,depth+1)
+        print_c(right,depth+1,comments)
         p(")")
     elif name == "String":
         p('"%s"'%value)
@@ -1014,7 +1014,7 @@ def print_c( thing, depth=0 ):
         var, expression = value
         p(var)
         p("[")
-        print_c(expression,depth+1)
+        print_c(expression,depth+1,comments)
         p("]")
     elif name == "Type":
         mods, type, isPointer = value
@@ -1026,20 +1026,20 @@ def print_c( thing, depth=0 ):
     elif name == "Declaration":
         for declaration in value:
             type,name,length,assignment = declaration
-            print_c(type,depth+1)
+            print_c(type,depth+1,comments)
             p(name,1)
             if length:
                 p("[",1)
-                print_c(length,depth+2)
+                print_c(length,depth+2,comments)
                 p("]",1)
             if assignment:
                 p("=",1)
-                print_c(assignment,depth+2)
-        p(";")
+                print_c(assignment,depth+2,comments)
+            p(";")
     elif name == "Expression":
         p("(")
         if value:
-            print_c(value,depth+1)
+            print_c(value,depth+1,comments)
         p(")")
     elif name=="Struct" or name=="Union":
         if name == "Struct":
@@ -1048,47 +1048,48 @@ def print_c( thing, depth=0 ):
             p("union")
         p("{")
         for expression in value:
-            print_c(expression,depth+1)
-        p("}")
+            print_c(expression,depth+1,comments)
+        p("};")
     elif name=="If":
         test,action,alternative = value
         p("if(")
         comment( "TEST" )
-        print_c(test,depth+2)
+        print_c(test,depth+2,comments)
         p(")")
         comment( "DO" )
         p("{")
-        print_c(action,depth+2)
+        print_c(action,depth+2,comments)
         p("}")
         if alternative:
             comment( "ELSE" )
             p("else {",1)
-            print_c(alternative,depth+2)
+            print_c(alternative,depth+2,comments)
             p("}",1)
     elif name=="While":
         test,action = value
         p("while(")
         comment( "TEST" )
-        print_c(test,depth+2)
+        print_c(test,depth+2,comments)
         p(")")
         comment( "DO" )
         p("{",1)
-        print_c(action,depth+2)
+        print_c(action,depth+2,comments)
         p("}",1)
     elif name=="For":
         init,test,step,action = value
         p("for(")
         comment( "INIT" )
-        print_c(init,(depth+1)+1)
+        print_c(init,(depth+1)+1,comments)
         p(";")
         comment( "TEST" )
-        print_c(test,(depth+1)+1)
+        print_c(test,(depth+1)+1,comments)
         p(";")
         comment( "STEP" )
-        print_c(step,(depth+1)+1)
+        print_c(step,(depth+1)+1,comments)
+        p(")")
         comment( "DO" )
         p("{")
-        print_c(action,depth+2)
+        print_c(action,depth+2,comments)
         p("}")
     elif name=="Break":
         p("break;")
@@ -1096,11 +1097,11 @@ def print_c( thing, depth=0 ):
         p("continue;")
     elif name=="Return":
         p("return")
-        print_c(value,depth+1)
+        print_c(value,depth+1,comments)
         p(";")
     elif name=="Case":
         p("case")
-        print_c(value,depth+1)
+        print_c(value,depth+1,comments)
         p(":")
     elif name=="Label":
         p(value,1)
@@ -1111,7 +1112,7 @@ def print_c( thing, depth=0 ):
     elif name=="default":
         p("default:")
     elif name=="Statement":
-        print_c(value,depth)
+        print_c(value,depth,comments)
         p(";")
     elif name=="Function":
         returntype,name,arguments,block = value
@@ -1121,14 +1122,14 @@ def print_c( thing, depth=0 ):
         else:
             comment( "Function Header" )
             pass
-        print_c(returntype,depth+1)
+        print_c(returntype,depth+1,comments)
         p(name,1)
         p("(")
         if len(arguments):
             comment( "With %d Argument%s" %(len(arguments), "s" if len(arguments) > 1 else "") )
             for num,(argtype,argname) in enumerate(arguments):
                 comment( "Argument %d:" %(num+1) )
-                print_c(argtype,depth+2)
+                print_c(argtype,depth+2,comments)
                 comment( "Name" )
                 p(argname,3)
                 if num != len(arguments)-1:
@@ -1139,24 +1140,26 @@ def print_c( thing, depth=0 ):
             p("void")
         p(")")
         if block:
-            print_c(block,depth+1)
+            print_c(block,depth+1,comments)
         else:
             p(";")
     elif name=="Call":
         func,arguments = value
         p(func)
         p("(")
-        for arg in arguments:
-            print_c(arg,depth+1)
+        for num,arg in enumerate(arguments):
+            print_c(arg,depth+1,comments)
+            if num != len(arguments)-1:
+                p(",")
         p(")")
     elif name=="Switch":
         test,block = value
         p("switch")
         p("(")
-        print_c(test,depth+1)
+        print_c(test,depth+1,comments)
         p(")")
         p("{")
-        print_c(block,depth+1)
+        print_c(block,depth+1,comments)
         p("}")
     else:
         p("Warning!  Unknown type '", name,"'")
@@ -1167,14 +1170,42 @@ if __name__ == "__main__":
     import os
     import sys
     import glob
+    from optparse import OptionParser
+
+    # Option Parser
+    parser = OptionParser()
+    parser.add_option("-s", "--save", dest="save", default=False,
+                      action="store_true",
+                      help="Save" )
+    parser.add_option("-d", "--dir", dest="directory",
+                      action="store", type="string", default="results",
+                      help="Output directory", metavar="DIR")
+    parser.add_option("-c", "--code",
+                      action="store_true", dest="code", default=False,
+                      help="Output AST as C")
+    parser.add_option("--comments",
+                      action="store_true", dest="comments", default=False,
+                      help="Output comments in the code")
+    parser.add_option("-a", "--ast",
+                      action="store_true", dest="ast", default=False,
+                      help="Output AST as readable AST")
+    parser.add_option("-t", "--tokens",
+                      action="store_true", dest="tokens", default=False,
+                      help="Output parsed tokens")
+    (options, args) = parser.parse_args()
+
+    # expand options
     files = []
-    for arg in sys.argv[1:]:
+    for arg in args:
         for filenames in glob.glob( arg ):
                 files.append( filenames )
-    output_to_files = False
+    output_to_files = options.save
+    dirname = options.directory
     if output_to_files:
-        if not os.path.exists( "results" ):
-            os.mkdir( "results" )
+        if not os.path.exists( dirname ):
+            os.mkdir( dirname )
+
+    # Do the stuff
     for filename in files:
         print filename
         dirpath,filebase = os.path.split(filename)
@@ -1182,22 +1213,25 @@ if __name__ == "__main__":
         tokens = list(tokenize( data ))
         # Print out the Lexer
         print "Lexical Analysis:"
-        for i,token in enumerate( tokens ):
-            loc = ("%d (%d,%d): " %(i, token.line, token.pos)).ljust(16)
-            print loc,token
-
+        if options.tokens:
+            for i,token in enumerate( tokens ):
+                loc = ("%d (%d,%d): " %(i, token.line, token.pos)).ljust(16)
+                print loc,token
+        
         # Parse tokens
         print
         print "Structural Analysis:"
         if output_to_files:
             temp_out = sys.stdout
-            outpath = os.path.join("results", "result_"+filebase)
+            outpath = os.path.join(dirname, filebase)
             outfile = open(outpath,"w")
             sys.stdout = outfile
         while len(tokens):
             block, tokens = parse_root( tokens )
-            #print_thing(block)
-            print_c(block)
+            if options.ast:
+                print_thing(block)
+            if options.code:
+                print_c(block, 0, options.comments)
         print
         if output_to_files:
             sys.stdout = temp_out
