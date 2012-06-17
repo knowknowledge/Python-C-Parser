@@ -16,6 +16,11 @@ int bar( int a,int b )
 }
 
 int main() {
+
+    #define asdf int
+    asdf foobar;
+    #undef asdf
+
     int i;
     struct {
         int* foo[4];

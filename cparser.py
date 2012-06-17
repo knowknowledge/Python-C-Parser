@@ -146,11 +146,38 @@ def tokenize( s ):
     in_char = False
     in_comment = False
     in_pragma = False
+    in_define= False
+    definitions = {}
+    def evaluate_pragma( pragma ):
+        print pragma
+        #define
+        if pragma.startswith("#define "):
+            pragma = pragma.lstrip("#define ")
+            identifier = pragma[0:pragma.index(" ")]
+            expansion = pragma[pragma.index(" ")+1:]
+            definitions[identifier] = expansion
+        elif pragma.startswith("#undef "):
+            identifier = pragma.lstrip("#undef ")
+            if definitions.has_key(identifier):
+                del definitions[ identifier ]
+        else:
+            # Unknown pragma
+            pass
+    def _token():
+        if definitions.has_key(curtoken):
+            redefined = Token(definitions[curtoken])
+            redefined.set( *curtoken.position() )
+            return redefined
+        else:
+            return curtoken
+        
     for c in s:
         pos += 1
         #print (c,curtoken)
         if in_comment or in_pragma:
             if c=="\n":
+                if in_pragma:
+                    evaluate_pragma( curtoken )
                 if curtoken.startswith("//") or curtoken.startswith("#") :
                     curtoken = Token("")
                     curtoken.set(line,pos)
@@ -164,11 +191,12 @@ def tokenize( s ):
                 in_comment = False
             else:
                 curtoken += c
+            
         elif c == '"' and not in_char:
             if not in_string:
                 # Start of new String
                 if curtoken != "":
-                    yield curtoken
+                    yield _token()
                 in_string = True
                 curtoken = Token('"')
                 curtoken.set(line,pos)
@@ -179,7 +207,7 @@ def tokenize( s ):
                 # End of String
                 in_string = False
                 curtoken += c
-                yield curtoken
+                yield _token()
                 curtoken = Token("")
                 curtoken.set(line,pos)
         elif in_string:
@@ -201,7 +229,7 @@ def tokenize( s ):
                 curtoken += c
                 if len(curtoken) != 3:
                     print "Lex Error at Line %d / Char %d - Character '%s' is too long." % (curtoken.line, curtoken.pos, c)
-                yield curtoken
+                yield _token()
                 in_char = False
                 curtoken = Token("")
                 curtoken.set(line,pos)
@@ -210,13 +238,13 @@ def tokenize( s ):
         elif c == "'" and not in_string:
             # Start of Character:
             if curtoken != "":
-                yield curtoken
+                yield _token()
             curtoken = Token("'")
             curtoken.set(line,pos)
             in_char = True
         elif c == "#":
             if curtoken != "":
-                yield curtoken
+                yield _token()
             curtoken = Token("#")
             curtoken.set(line,pos)
             in_pragma = True
@@ -234,18 +262,18 @@ def tokenize( s ):
                 curtoken += Token(c)
             else:
                 if curtoken != "":
-                    yield curtoken
+                    yield _token()
                 curtoken = Token(c)
                 curtoken.set(line,pos)
         else:
         # Non-Symbols
             if isonly(curtoken, symbols):
-                yield curtoken
+                yield _token()
                 curtoken = Token("")
                 curtoken.set(line,pos)
             if c in string.whitespace:
                 if curtoken != "":
-                    yield curtoken
+                    yield _token()
                 if c == "\n":
                     #yield c
                     line += 1
@@ -266,7 +294,7 @@ def tokenize( s ):
             else:
                 curtoken += Token(c)
     if curtoken not in string.whitespace:
-        yield curtoken
+        yield _token()
 
 # Token Parser
 # ------------------------------------------------------------------------
