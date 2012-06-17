@@ -1140,7 +1140,7 @@ def print_c( thing, depth, comments ):
             p("void")
         p(")")
         if block:
-            print_c(block,depth+1,comments)
+            print_c(block,depth,comments)
         else:
             p(";")
     elif name=="Call":
@@ -1204,35 +1204,45 @@ if __name__ == "__main__":
     if output_to_files:
         if not os.path.exists( dirname ):
             os.mkdir( dirname )
+    real_out = sys.stdout
 
     # Do the stuff
     for filename in files:
         print filename
         dirpath,filebase = os.path.split(filename)
+        base,ext = os.path.splitext(filebase)
         data = open(filename,"r").read()
         tokens = list(tokenize( data ))
+
         # Print out the Lexer
-        print "Lexical Analysis:"
         if options.tokens:
+            if output_to_files:
+                sys.stdout = open(os.path.join(dirname, base+".tok"),"w")
+            print "Lexical Analysis of " + filename
             for i,token in enumerate( tokens ):
                 loc = ("%d (%d,%d): " %(i, token.line, token.pos)).ljust(16)
                 print loc,token
         
         # Parse tokens
-        print
-        print "Structural Analysis:"
         if output_to_files:
-            temp_out = sys.stdout
-            outpath = os.path.join(dirname, filebase)
-            outfile = open(outpath,"w")
-            sys.stdout = outfile
+            if options.ast:
+                astfile = open(os.path.join(dirname, base+".ast"),"w")
+                sys.stdout = astfile
+                print "AST code of " + filename
+            if options.code:
+                cfile = open(os.path.join(dirname, base+".c"),"w")
+                sys.stdout = cfile
+                print "// C code of " + filename
+
         while len(tokens):
             block, tokens = parse_root( tokens )
             if options.ast:
+                sys.stdout = astfile
                 print_thing(block)
             if options.code:
+                sys.stdout = cfile
                 print_c(block, 0, options.comments)
         print
         if output_to_files:
-            sys.stdout = temp_out
+            sys.stdout = real_out
 
