@@ -468,7 +468,10 @@ def parse_expression( tokens ):
                     print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
                     assert(0)
                 tokens.pop(0)
-                break
+                #break
+            if tokens[0] in binary_operations:
+                symbol = tokens.pop(0)
+                expression.append( ("Math", (symbol) ) )
         elif tokens[0] == ";":
             break
         elif tokens[0] == ",":
@@ -477,6 +480,9 @@ def parse_expression( tokens ):
             break
         elif tokens[0] == "]":
             break
+        elif tokens[0] in binary_operations:
+            symbol = tokens.pop(0)
+            expression.append( ("Math", (symbol) ) )
         # Get the next value
         else:
             value,tokens = parse_value( tokens )
@@ -489,8 +495,8 @@ def parse_expression( tokens ):
                 #print "Didn't find an operator, found",str(tokens[0]),"instead"
                 pass
     # Fix precedence
-    if len(expression) > 1:
-        while len(expression) > 1:
+    if len(expression) > 2:
+        while len(expression) > 2:
             # The expressions should always be of the form:
             # Value Math Value Math Value
             symbols = [ sym[1] for sym in expression[1::2] ]
@@ -503,16 +509,23 @@ def parse_expression( tokens ):
                     right,left = expression[i-1],expression[i+1]
                     math = ("Binary",(symbol,right,left))
                     #print math
-                    expression = before + [("Expression", math)] + after
+                    expression = before + [math] + after
                     break
+    elif len(expression) == 2:
+        if expression[0][0] == "Math" and expression[0][1] in prefix_operations:
+            return ("Prefix",(expression[0][1],expression[1])),tokens
+        elif expression[1][0] == "Math" and expression[0][1] in postfix_operations:
+            return ("Postfix",(expression[1][1],expression[0])),tokens
+    #
     if len(expression) == 1:
-        return ("Expression",expression[0]),tokens
+        return expression[0],tokens
     elif len(expression) == 0:
         return ("Expression",[]),tokens
     else:
         print >>sys.stderr, "Parse Error at Line %d / Char %d - Couldn't compress expression into tree" % (tokens[0].line, tokens[0].pos)
+        for e in expression:
+            print >>sys.stderr, e
         assert(0)
-
 
 def parse_struct( tokens ):
     struct = []
@@ -586,6 +599,9 @@ def parse_declaration( tokens ):
     assignments = []
     type, tokens = parse_type( tokens )
     while len(tokens):
+        if tokens[0] == "*":
+            type = ("Type", (type[0][0], type[0][1], True))
+            tokens.pop(0)
         # Check if it's a pointer
         name = tokens.pop(0)
         #print "Name %s" % name
@@ -614,6 +630,7 @@ def parse_declaration( tokens ):
         if len(tokens):
             print >>sys.stderr, "Parse Error at Line %d / Char %d - unknown token encountered at '%s'" % (tokens[0].line, tokens[0].pos, tokens[0])
             assert(0)
+        type = ("Type", (type[0][0], type[0][1], False))
     return ("Declaration", assignments), tokens
 
 def parse_function( tokens ):
@@ -929,8 +946,10 @@ def print_thing( thing, depth=0 ):
         p(name)
         p(func)
         p("(")
-        for arg in arguments:
+        for num,arg in enumerate(arguments):
             print_thing(arg,depth+1)
+            if num != len(arguments)-1:
+                p(",")
         p(")")
     elif name=="Switch":
         test,block = value
@@ -948,8 +967,8 @@ def print_thing( thing, depth=0 ):
 
 def print_c( thing, depth=0 ):
     def comment(str):
-        #p("\\\\ "+ str)
-        pass
+        if comments:
+            p("// "+ str)
     def p(str,d=0):
         print "\t"*(depth+d)+ str
     try:

@@ -1,3 +1,8 @@
+int foo(){
+    (1)+(2);
+    if( !a )
+        return -1;
+}
 int mult(int one, int two) { return one * two; }
 int div(int one, int two) { return one / two; }
 int add(int one, int two) { return one + two; }
@@ -19,8 +24,6 @@ int main() {
 
     b = ++a + b--;
     
-    if( !a )
-        return -1;
 
     return total;
 }
