@@ -38,9 +38,10 @@ int main()
     */
     ((10));
     d[10].c; // SubStruct of Array value
-    int x[10];
+    int x[10] = (int)y;
     const int ten[10];
     const int *pten[10];
+    char y = (unsigned char*)(x);
     // char (*(*x())[5])()
     // int (*(*foo)(void ))[3]
     // (int (*)(char *x, int y))x

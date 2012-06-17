@@ -406,6 +406,34 @@ def parse_for( tokens ):
     #print "For",init,test,step,action
     return ("For",(init,test,step,action)), tokens
 
+def parse_cast( tokens ):
+    # This enforces (int)x or (int)(x), rather than int(x), that's not quite right
+    if tokens[0]!="(":
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - cast must start with '(', found %s instead" % (tokens[0].line, tokens[0].pos, tokens[0])
+        assert(0)
+    tokens.pop(0)
+    # Get the Cast Type
+    cast_type,tokens = parse_type(tokens)
+    print "Being cast as", type
+    if tokens[0] != ")":
+        for e in expression:
+            print e
+        print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
+        assert(0)
+    tokens.pop(0)
+    # Get the Casted Value
+    if tokens[0] == "(":
+        tokens.pop(0)
+        cast_value,tokens = parse_expression(tokens)
+        if tokens[0] != ")":
+            print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
+            assert(0)
+        tokens.pop(0)
+    else:
+        cast_value,tokens = parse_value( tokens )
+    return ("Cast",(cast_type,cast_value)), tokens
+    
+
 def parse_expression( tokens ):
     # This should be a tree not a list
     expression = []
@@ -414,16 +442,21 @@ def parse_expression( tokens ):
         #TODO: Add Comma
         #TODO: Symbol Symbol should be illegal
         if tokens[0] == "(":
-            tokens.pop(0)
-            inner,tokens = parse_expression( tokens )
-            expression.append( inner )
-            if tokens[0] != ")":
-                for e in expression:
-                    print e
-                print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
-                assert(0)
-            tokens.pop(0)
-            break
+            # Is this an inner expression or a cast?
+            if tokens[1] in types+modifiers:
+                inner,tokens = parse_cast( tokens )
+                expression.append( inner )
+            else:
+                tokens.pop(0)
+                inner,tokens = parse_expression( tokens )
+                expression.append( inner )
+                if tokens[0] != ")":
+                    for e in expression:
+                        print e
+                    print >>sys.stderr, "Parse Error at Line %d / Char %d - ')' expected after expression %s" % (tokens[0].line, tokens[0].pos, str(inner))
+                    assert(0)
+                tokens.pop(0)
+                break
         elif tokens[0] == ";":
             break
         elif tokens[0] == ",":
@@ -572,7 +605,8 @@ def parse_declaration( tokens ):
     return ("Declaration", assignments), tokens
 
 def parse_function( tokens ):
-    returntype = tokens.pop(0)
+    returntype,tokens = parse_type(tokens)
+
     name = tokens.pop(0)
     
     if tokens[0]!="(":
@@ -586,9 +620,11 @@ def parse_function( tokens ):
         # Reached end of Argument List
         if tokens[0]==")":
             break
-        type = tokens.pop(0)
-        if type == "void" and tokens[0]==")":
+        if tokens[0]== "void" and tokens[1]==")":
+            print "void"
+            tokens.pop(0)
             break
+        type,tokens = parse_type(tokens)
         argname = tokens.pop(0)
         if is_keyword(name):
             print >>sys.stderr, "Parse Error at Line %d / Char %d - Function argument #%d's name '%s' cannot be a keyword" % (len(arguments)+1, name)
@@ -727,6 +763,12 @@ def print_thing( thing, depth=0 ):
         print "\t"*depth+ "Math"
         print "\t"*depth+symbol
         assert(0)
+    elif name == "Cast":
+        type,expression = value
+        print "\t"*depth+ "Cast"
+        print_thing(expression,depth+1)
+        print "\t"*depth+ "To"
+        print_thing(type,depth+1)
     elif name == "Prefix":
         print "\t"*depth+ "Prefix"
         symbol, expression = value
@@ -758,7 +800,11 @@ def print_thing( thing, depth=0 ):
     elif name == "Type":
         print "\t"*depth+ "Type"
         mods, type, isPointer = value
-        print "\t"*depth+ ("Pointer to " if isPointer else "") + " ".join(mods) + type
+        if len(mods):
+            type = " ".join(mods) + " " + type
+        if isPointer:
+            type = "Pointer to " + type
+        print "\t"*(depth+1)+ type
     elif name == "Declaration":
         print "\t"*depth+ name
         for declaration in value:
@@ -766,16 +812,17 @@ def print_thing( thing, depth=0 ):
                 type,name,length = declaration
                 if length:
                     print "\t"*(depth+1)+ "Array of length"
-                    print_thing(length,depth+1)
+                    print_thing(length,depth+2)
                 print_thing(type,depth+1)
-                print "\t"*(depth+1)+ "Named"
-                print "\t"*(depth+1)+ name 
+                print "\t"*(depth+1)+ "Name"
+                print "\t"*(depth+2)+ name 
             else:
                 type,name,length,expression = declaration
                 print_thing(type,depth+1)
-                print "\t"*depth+ name, "= ("
-                print_thing(expression,depth+1)
-                print "\t"*depth+ ")"
+                print "\t"*(depth+1)+ "Name"
+                print "\t"*(depth+2)+ name 
+                print "\t"*(depth+1)+ "Assigned the value"
+                print_thing(expression,depth+2)
     elif name == "Expression":
         print "\t"*depth+ name
         print "\t"*depth+ "("
